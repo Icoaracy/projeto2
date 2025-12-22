@@ -11,8 +11,10 @@ import { Mail, Phone, MapPin, Star, Zap, Shield, AlertTriangle, FileText, Search
 import { apiClient } from "@/lib/api";
 import { useSecurity } from "@/hooks/use-security";
 import { validateFormInput } from "@/lib/security";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -116,7 +118,11 @@ const Index = () => {
             Garanta conformidade e eficiência em seus processos licitatórios com tecnologia de ponta.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="text-lg px-8">
+            <Button 
+              size="lg" 
+              className="text-lg px-8"
+              onClick={() => navigate("/create-artifact")}
+            >
               Criar Artefato
             </Button>
             <Button variant="outline" size="lg" className="text-lg px-8">
