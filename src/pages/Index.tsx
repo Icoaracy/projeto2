@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { showSuccess, showError } from "@/utils/toast";
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import { Mail, Phone, MapPin, Star, Zap, Shield, AlertTriangle, FileText, ArrowRight } from "lucide-react";
+import { Mail, Phone, MapPin, Star, Zap, Shield, AlertTriangle, FileText, ArrowRight, Check } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 

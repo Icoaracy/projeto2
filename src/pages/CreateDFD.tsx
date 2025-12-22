@@ -11,6 +11,12 @@ import jsPDF from "jspdf";
 import { apiClient } from "@/lib/api";
 import { useSecurity } from "@/hooks/use-security";
 
+interface ImproveTextResponse {
+  success: boolean;
+  improvedText?: string;
+  error?: string;
+}
+
 const CreateDFD = () => {
   const navigate = useNavigate();
   const { canMakeRequest } = useSecurity();
@@ -256,7 +262,7 @@ const CreateDFD = () => {
     setIsImprovingText(true);
 
     try {
-      const response = await apiClient.post('/api/improve-text', {
+      const response = await apiClient.post<ImproveTextResponse>('/api/improve-text', {
         text: formData.objetoAquisicao,
         context: "licitação e aquisição de bens e serviços"
       });
