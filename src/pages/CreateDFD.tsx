@@ -8,6 +8,7 @@ import { ArrowLeft, Save, FileText, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import jsPDF from "jspdf";
+import { AITextImprover } from "@/components/ai-text-improver";
 
 const CreateDFD = () => {
   const navigate = useNavigate();
@@ -386,16 +387,16 @@ const CreateDFD = () => {
                 <CardTitle className="text-xl">2. Descrição da Necessidade</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Item 2.1 com AI Text Improver */}
                 <div className="space-y-2">
                   <Label htmlFor="objetoAquisicao">2.1. Objeto da Aquisição</Label>
-                  <Textarea
-                    id="objetoAquisicao"
-                    name="objetoAquisicao"
+                  <AITextImprover
                     value={formData.objetoAquisicao}
-                    onChange={handleInputChange}
-                    placeholder="Descreva o objeto da aquisição"
-                    rows={3}
-                    required
+                    onChange={(value) => handleInputChange({ target: { name: 'objetoAquisicao', value } } as any)}
+                    placeholder="Descreva o objeto da aquisição. A IA ajudará a melhorar seu texto!"
+                    label="Objeto da Aquisição"
+                    context="licitação e aquisição de bens e serviços"
+                    maxLength={2000}
                   />
                 </div>
                 
