@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { showSuccess, showError } from "@/utils/toast";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { SecurityStatus } from "@/components/security-status";
-import { Mail, Phone, MapPin, Star, Zap, Shield, AlertTriangle } from "lucide-react";
+import { Mail, Phone, MapPin, Star, Zap, Shield, AlertTriangle, FileText, Search, CheckCircle, TrendingUp } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { useSecurity } from "@/hooks/use-security";
 import { validateFormInput } from "@/lib/security";
@@ -29,19 +29,19 @@ const Index = () => {
     // Validate name
     const nameValidation = validateFormInput(formData.name, 'name');
     if (!nameValidation.isValid) {
-      newErrors.name = nameValidation.error || 'Invalid name';
+      newErrors.name = nameValidation.error || 'Nome inválido';
     }
 
     // Validate email
     const emailValidation = validateFormInput(formData.email, 'email');
     if (!emailValidation.isValid) {
-      newErrors.email = emailValidation.error || 'Invalid email';
+      newErrors.email = emailValidation.error || 'Email inválido';
     }
 
     // Validate message
     const messageValidation = validateFormInput(formData.message, 'message');
     if (!messageValidation.isValid) {
-      newErrors.message = messageValidation.error || 'Invalid message';
+      newErrors.message = messageValidation.error || 'Mensagem inválida';
     }
 
     setErrors(newErrors);
@@ -67,13 +67,13 @@ const Index = () => {
     
     // Check rate limit before proceeding
     if (!canMakeRequest()) {
-      showError("Rate limit exceeded. Please wait before trying again.");
+      showError("Limite de requisições excedido. Por favor, aguarde antes de tentar novamente.");
       return;
     }
     
     // Validate form on client side first
     if (!validateForm()) {
-      showError("Please fix the errors in the form");
+      showError("Por favor, corrija os erros no formulário");
       return;
     }
 
@@ -84,16 +84,16 @@ const Index = () => {
       const response = await apiClient.post('/api/contact', formData);
       
       if (response.success) {
-        showSuccess(response.message || "Form submitted successfully!");
+        showSuccess(response.message || "Formulário enviado com sucesso!");
         setFormData({ name: "", email: "", message: "" });
         setErrors({});
         // Update rate limit status after successful submission
         await updateRateLimitStatus();
       } else {
-        showError(response.error || "Failed to submit form");
+        showError(response.error || "Falha ao enviar formulário");
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to submit form. Please try again.";
+      const errorMessage = error instanceof Error ? error.message : "Falha ao enviar formulário. Tente novamente.";
       showError(errorMessage);
       // Update rate limit status after error
       await updateRateLimitStatus();
@@ -108,18 +108,19 @@ const Index = () => {
       <section className="py-20 px-4">
         <div className="max-w-6xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-            Welcome to Your
-            <span className="text-blue-600"> Secure App</span>
+            Análise de Artefatos de
+            <span className="text-blue-600"> Licitação</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Transform your ideas into reality with our powerful platform. Built with security-first architecture to protect your data.
+            Plataforma inteligente para análise automatizada de documentos de licitação. 
+            Garanta conformidade e eficiência em seus processos licitatórios com tecnologia de ponta.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="text-lg px-8">
-              Get Started
+              Começar Análise
             </Button>
             <Button variant="outline" size="lg" className="text-lg px-8">
-              Learn More
+              Ver Demonstração
             </Button>
           </div>
         </div>
@@ -131,9 +132,10 @@ const Index = () => {
           <div className="flex items-center gap-3 text-blue-800">
             <Shield className="w-6 h-6" />
             <div>
-              <h3 className="font-semibold">Enhanced Security Active</h3>
+              <h3 className="font-semibold">Segurança Avançada Ativa</h3>
               <p className="text-sm text-blue-700">
-                This application uses Content Security Policy (CSP), enhanced rate limiting, CSRF protection, and comprehensive input validation to keep your data safe.
+                Esta aplicação utiliza Política de Segurança de Conteúdo (CSP), rate limiting robusto, 
+                proteção CSRF e validação abrangente para proteger seus dados de licitação.
               </p>
             </div>
           </div>
@@ -144,19 +146,20 @@ const Index = () => {
       <section className="py-20 px-4 bg-white">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12">
-            Why Choose Us
+            Por Que Escolher Nossa Plataforma
           </h2>
           <div className="grid md:grid-cols-3 gap-8">
             <Card className="text-center p-6 border-0 shadow-lg">
               <CardHeader>
                 <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                  <Zap className="w-6 h-6 text-blue-600" />
+                  <Search className="w-6 h-6 text-blue-600" />
                 </div>
-                <CardTitle>Lightning Fast</CardTitle>
+                <CardTitle>Análise Inteligente</CardTitle>
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-gray-600">
-                  Experience blazing fast performance with our optimized infrastructure and cutting-edge technology.
+                  Processamento automatizado de editais e documentos com IA para identificar 
+                  requisitos críticos e garantir conformidade total.
                 </CardDescription>
               </CardContent>
             </Card>
@@ -166,11 +169,12 @@ const Index = () => {
                 <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
                   <Shield className="w-6 h-6 text-green-600" />
                 </div>
-                <CardTitle>Secure & Reliable</CardTitle>
+                <CardTitle>Segurança & Conformidade</CardTitle>
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-gray-600">
-                  Your data is protected with enterprise-grade security, enhanced CSP headers, robust rate limiting, and server-side API processing.
+                  Seus dados de licitação protegidos com segurança empresarial, 
+                  headers CSP avançados e processamento seguro de API.
                 </CardDescription>
               </CardContent>
             </Card>
@@ -178,16 +182,59 @@ const Index = () => {
             <Card className="text-center p-6 border-0 shadow-lg">
               <CardHeader>
                 <div className="mx-auto w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-4">
-                  <Star className="w-6 h-6 text-purple-600" />
+                  <TrendingUp className="w-6 h-6 text-purple-600" />
                 </div>
-                <CardTitle>Easy to Use</CardTitle>
+                <CardTitle>Maximize Suas Chances</CardTitle>
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-gray-600">
-                  Intuitive interface designed for both beginners and experts. No learning curve required.
+                  Interface intuitiva projetada para gestores e equipes. 
+                  Aumente sua taxa de sucesso em licitações com análises precisas.
                 </CardDescription>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Additional Features */}
+      <section className="py-20 px-4 bg-gray-50">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12">
+            Recursos Principais
+          </h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="text-center">
+              <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                <FileText className="w-8 h-8 text-blue-600" />
+              </div>
+              <h3 className="font-semibold mb-2">Análise de Editais</h3>
+              <p className="text-sm text-gray-600">Processamento automático de documentos de licitação</p>
+            </div>
+            
+            <div className="text-center">
+              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle className="w-8 h-8 text-green-600" />
+              </div>
+              <h3 className="font-semibold mb-2">Verificação de Conformidade</h3>
+              <p className="text-sm text-gray-600">Validação automática contra requisitos legais</p>
+            </div>
+            
+            <div className="text-center">
+              <div className="mx-auto w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
+                <Zap className="w-8 h-8 text-purple-600" />
+              </div>
+              <h3 className="font-semibold mb-2">Processamento Rápido</h3>
+              <p className="text-sm text-gray-600">Análise em minutos, não em horas</p>
+            </div>
+            
+            <div className="text-center">
+              <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">
+                <Star className="w-8 h-8 text-orange-600" />
+              </div>
+              <h3 className="font-semibold mb-2">Relatórios Detalhados</h3>
+              <p className="text-sm text-gray-600">Insights acionáveis para melhorar propostas</p>
+            </div>
           </div>
         </div>
       </section>
@@ -196,27 +243,29 @@ const Index = () => {
       <section className="py-20 px-4 bg-gray-50">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12">
-            Get In Touch
+            Entre em Contato
           </h2>
           <div className="grid md:grid-cols-2 gap-12">
             <div>
-              <h3 className="text-2xl font-semibold mb-6">Let's Start a Conversation</h3>
+              <h3 className="text-2xl font-semibold mb-6">Inicie uma Conversa</h3>
               <p className="text-gray-600 mb-8">
-                Have questions about our services? Want to see a demo? Fill out the form and our team will get back to you within 24 hours.
+                Tem dúvidas sobre nossa plataforma de análise de licitações? 
+                Quer ver uma demonstração? Preencha o formulário e nossa equipe 
+                retornará em até 24 horas.
               </p>
               
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <Mail className="w-5 h-5 text-blue-600" />
-                  <span className="text-gray-600">hello@example.com</span>
+                  <span className="text-gray-600">contato@licitacao-analise.com</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Phone className="w-5 h-5 text-blue-600" />
-                  <span className="text-gray-600">+1 (555) 123-4567</span>
+                  <span className="text-gray-600">+55 (11) 3456-7890</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <MapPin className="w-5 h-5 text-blue-600" />
-                  <span className="text-gray-600">123 Business St, City, State 12345</span>
+                  <span className="text-gray-600">São Paulo, SP - Brasil</span>
                 </div>
               </div>
               
@@ -228,20 +277,20 @@ const Index = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Send us a message</CardTitle>
+                <CardTitle>Envie sua mensagem</CardTitle>
                 <CardDescription>
-                  We'd love to hear from you
+                  Gostaríamos de saber mais sobre suas necessidades
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Name</Label>
+                    <Label htmlFor="name">Nome</Label>
                     <Input
                       id="name"
                       name="name"
                       type="text"
-                      placeholder="Your name"
+                      placeholder="Seu nome"
                       value={formData.name}
                       onChange={handleInputChange}
                       className={errors.name ? "border-red-500" : ""}
@@ -262,7 +311,7 @@ const Index = () => {
                       id="email"
                       name="email"
                       type="email"
-                      placeholder="your@email.com"
+                      placeholder="seu@email.com"
                       value={formData.email}
                       onChange={handleInputChange}
                       className={errors.email ? "border-red-500" : ""}
@@ -278,11 +327,11 @@ const Index = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="message">Message</Label>
+                    <Label htmlFor="message">Mensagem</Label>
                     <Textarea
                       id="message"
                       name="message"
-                      placeholder="Tell us how we can help you..."
+                      placeholder="Como podemos ajudar com suas análises de licitação..."
                       value={formData.message}
                       onChange={handleInputChange}
                       className={errors.message ? "border-red-500" : ""}
@@ -297,7 +346,7 @@ const Index = () => {
                       </p>
                     )}
                     <p className="text-xs text-gray-500">
-                      {formData.message.length}/2000 characters
+                      {formData.message.length}/2000 caracteres
                     </p>
                   </div>
                   
@@ -306,7 +355,7 @@ const Index = () => {
                     className="w-full" 
                     disabled={isSubmitting || !canMakeRequest()}
                   >
-                    {isSubmitting ? "Sending..." : "Send Message"}
+                    {isSubmitting ? "Enviando..." : "Enviar Mensagem"}
                   </Button>
                 </form>
               </CardContent>
@@ -318,10 +367,10 @@ const Index = () => {
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12 px-4">
         <div className="max-w-6xl mx-auto text-center">
-          <h3 className="text-2xl font-bold mb-4">Ready to Get Started?</h3>
-          <p className="text-gray-400 mb-6">Join thousands of satisfied customers today</p>
+          <h3 className="text-2xl font-bold mb-4">Pronto para Otimizar Suas Licitações?</h3>
+          <p className="text-gray-400 mb-6">Junte-se a centenas de empresas que aumentaram seu sucesso</p>
           <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
-            Start Free Trial
+            Iniciar Teste Gratuito
           </Button>
         </div>
       </footer>
