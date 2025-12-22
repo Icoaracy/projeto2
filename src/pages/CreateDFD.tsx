@@ -1227,7 +1227,7 @@ const CreateDFD = () => {
                       <Textarea
                         id="contratacoesCorrelatas"
                         name="contratacoesCorrelatas"
-                        value={formData.conatacoesCorrelatas}
+                        value={formData.contratacoesCorrelatas}
                         onChange={handleInputChange}
                         placeholder="Descreva as contratações correlatas"
                         rows={4}
