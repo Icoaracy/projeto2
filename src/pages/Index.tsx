@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,8 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { showSuccess, showError } from "@/utils/toast";
 import { MadeWithDyad } from "@/components/made-with-dyad";
+import { SecurityStatus } from "@/components/security-status";
 import { Mail, Phone, MapPin, Star, Zap, Shield, AlertTriangle } from "lucide-react";
 import { apiClient } from "@/lib/api";
+import { useSecurity } from "@/hooks/use-security";
 import { validateFormInput } from "@/lib/security";
 
 const Index = () => {
@@ -18,6 +20,7 @@ const Index = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { canMakeRequest, updateRateLimitStatus } = useSecurity();
 
   // Enhanced client-side validation using security utilities
   const validateForm = (): boolean => {
@@ -62,6 +65,12 @@ const Index = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Check rate limit before proceeding
+    if (!canMakeRequest()) {
+      showError("Rate limit exceeded. Please wait before trying again.");
+      return;
+    }
+    
     // Validate form on client side first
     if (!validateForm()) {
       showError("Please fix the errors in the form");
@@ -78,12 +87,16 @@ const Index = () => {
         showSuccess(response.message || "Form submitted successfully!");
         setFormData({ name: "", email: "", message: "" });
         setErrors({});
+        // Update rate limit status after successful submission
+        await updateRateLimitStatus();
       } else {
         showError(response.error || "Failed to submit form");
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to submit form. Please try again.";
       showError(errorMessage);
+      // Update rate limit status after error
+      await updateRateLimitStatus();
     } finally {
       setIsSubmitting(false);
     }
@@ -206,6 +219,11 @@ const Index = () => {
                   <span className="text-gray-600">123 Business St, City, State 12345</span>
                 </div>
               </div>
+              
+              {/* Security Status */}
+              <div className="mt-8">
+                <SecurityStatus showRateLimit={true} showCSRF={true} />
+              </div>
             </div>
 
             <Card>
@@ -286,7 +304,7 @@ const Index = () => {
                   <Button 
                     type="submit" 
                     className="w-full" 
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !canMakeRequest()}
                   >
                     {isSubmitting ? "Sending..." : "Send Message"}
                   </Button>

@@ -7,6 +7,7 @@ export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
   message?: string;
+  token?: string;
 }
 
 class ApiClient {
@@ -28,6 +29,43 @@ class ApiClient {
     return Math.random().toString(36).substring(2, 34);
   }
 
+  // Get CSRF token from server
+  async getCSRFToken(): Promise<string> {
+    try {
+      const response = await this.get<{ token: string }>('/api/csrf');
+      if (response.success && response.token) {
+        this.csrfToken = response.token;
+        return response.token;
+      }
+    } catch (error) {
+      console.error('Failed to get CSRF token:', error);
+    }
+    
+    // Fallback to client-side generation
+    if (!this.csrfToken) {
+      this.csrfToken = this.generateCSRFToken();
+    }
+    return this.csrfToken;
+  }
+
+  // Check rate limit status
+  async getRateLimitStatus(): Promise<{ remainingRequests: number; maxRequests: number; windowMs: number }> {
+    try {
+      const response = await this.get('/api/rate-limit');
+      if (response.success) {
+        return {
+          remainingRequests: response.remainingRequests || 0,
+          maxRequests: response.maxRequests || 5,
+          windowMs: response.windowMs || 60000
+        };
+      }
+    } catch (error) {
+      console.error('Failed to get rate limit status:', error);
+    }
+    
+    return { remainingRequests: 5, maxRequests: 5, windowMs: 60000 };
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -47,9 +85,11 @@ class ApiClient {
       // Add CSRF token for state-changing operations
       if (options.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method)) {
         if (!this.csrfToken) {
-          this.csrfToken = this.generateCSRFToken();
+          await this.getCSRFToken();
         }
-        headers['X-CSRF-Token'] = this.csrfToken;
+        if (this.csrfToken) {
+          headers['X-CSRF-Token'] = this.csrfToken;
+        }
       }
 
       const response = await fetch(url, {
