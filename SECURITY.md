@@ -5,6 +5,7 @@
 ### 1. NEVER expose secrets on the client-side
 - ❌ **NEVER** prefix private API keys with `VITE_` - Vite will bundle them into client code
 - ❌ **NEVER** commit `.env` files with secrets to version control
+- ❌ **NEVER** store secrets in frontend code
 - ✅ **ALWAYS** use server-side API endpoints for any operation requiring secrets
 
 ### 2. API Security Architecture
@@ -17,10 +18,12 @@
 ```bash
 # ❌ WRONG - Will be exposed to client
 VITE_API_KEY=secret_key
+VITE_STRIPE_SECRET=sk_...
 
 # ✅ CORRECT - Only available on server
 API_KEY=secret_key
 DATABASE_URL=postgresql://...
+STRIPE_SECRET_KEY=sk_...
 SENDGRID_API_KEY=SG....
 ```
 
