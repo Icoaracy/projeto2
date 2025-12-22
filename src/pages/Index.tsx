@@ -117,10 +117,10 @@ const Index = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="text-lg px-8">
-              Começar Análise
+              Criar Artefato
             </Button>
             <Button variant="outline" size="lg" className="text-lg px-8">
-              Ver Demonstração
+              Analisar artefato
             </Button>
           </div>
         </div>
