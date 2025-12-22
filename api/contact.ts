@@ -1,4 +1,4 @@
-import { RateLimiter, CSRFProtection, validateContactForm, SECURITY_MESSAGES, addRandomJitter } from './security';
+import { RateLimiter, CSRFProtection, sanitizeHtml, validateEmail, SECURITY_MESSAGES, addRandomJitter } from './security';
 
 // Initialize rate limiter: 5 requests per minute per IP
 const rateLimiter = new RateLimiter(5, 60000);
@@ -64,18 +64,57 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    // Use whitelist validation instead of generic validation
-    const validatedData = validateContactForm(req.body);
-    const { name, email, message } = validatedData;
+    const { name, email, message } = req.body;
+
+    // Comprehensive input validation
+    if (!name || !email || !message) {
+      // Add consistent timing for validation error
+      const processingTime = addRandomJitter(500);
+      const elapsed = Date.now() - startTime;
+      const remainingDelay = Math.max(0, processingTime - elapsed);
+      
+      setTimeout(() => {
+        res.status(400).json({ error: SECURITY_MESSAGES.VALIDATION_ERROR });
+      }, remainingDelay);
+      return;
+    }
+
+    // Validate field lengths
+    if (name.length > 100 || email.length > 254 || message.length > 2000) {
+      setTimeout(() => {
+        res.status(400).json({ error: SECURITY_MESSAGES.VALIDATION_ERROR });
+      }, addRandomJitter(500));
+      return;
+    }
+
+    // Strict email validation
+    if (!validateEmail(email)) {
+      setTimeout(() => {
+        res.status(400).json({ error: SECURITY_MESSAGES.VALIDATION_ERROR });
+      }, addRandomJitter(500));
+      return;
+    }
+
+    // Sanitize all inputs to prevent XSS
+    const sanitizedName = sanitizeHtml(name.trim());
+    const sanitizedMessage = sanitizeHtml(message.trim());
+
+    // Additional validation after sanitization
+    if (sanitizedName.length === 0 || sanitizedMessage.length === 0) {
+      setTimeout(() => {
+        res.status(400).json({ error: SECURITY_MESSAGES.VALIDATION_ERROR });
+      }, addRandomJitter(500));
+      return;
+    }
 
     // Log security-relevant information (without sensitive data)
     console.log('Contact form submission:', { 
       timestamp: new Date().toISOString(),
       ip: clientIP,
       userAgent: req.headers['user-agent'] ? '[REDACTED]' : 'none',
-      nameLength: name.length, 
+      nameLength: sanitizedName.length, 
       emailDomain: email.split('@')[1] || 'invalid',
-      messageLength: message.length
+      messageLength: sanitizedMessage.length
     });
     
     // Here you would typically:

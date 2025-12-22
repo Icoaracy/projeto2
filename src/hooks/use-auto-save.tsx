@@ -6,26 +6,7 @@ interface AutoSaveOptions {
   debounceTime?: number; // em milissegundos
   onSave?: (data: any) => Promise<void>;
   storageKey?: string;
-  useSessionStorage?: boolean; // New option to use sessionStorage instead of localStorage
-  encryptData?: boolean; // New option to encrypt data
 }
-
-// Simple client-side encryption (for demonstration - in production, use a proper crypto library)
-const simpleEncrypt = (text: string): string => {
-  try {
-    return btoa(encodeURIComponent(text));
-  } catch {
-    return text;
-  }
-};
-
-const simpleDecrypt = (text: string): string => {
-  try {
-    return decodeURIComponent(atob(text));
-  } catch {
-    return text;
-  }
-};
 
 export const useAutoSave = <T extends Record<string, any>>(
   data: T,
@@ -35,9 +16,7 @@ export const useAutoSave = <T extends Record<string, any>>(
     interval = 30, // 30 segundos
     debounceTime = 2000, // 2 segundos
     onSave,
-    storageKey = 'dfd-form-data',
-    useSessionStorage = true, // Default to sessionStorage for better security
-    encryptData = true // Default to encryption
+    storageKey = 'dfd-form-data'
   } = options;
 
   const [isSaving, setIsSaving] = useState(false);
@@ -47,48 +26,30 @@ export const useAutoSave = <T extends Record<string, any>>(
   const intervalRef = useRef<NodeJS.Timeout>();
   const previousDataRef = useRef<T>(data);
 
-  // Choose storage method based on options
-  const getStorage = () => useSessionStorage ? sessionStorage : localStorage;
-  
-  // Carregar dados salvos do storage
+  // Carregar dados salvos do localStorage
   const loadSavedData = useCallback(() => {
     try {
-      const storage = getStorage();
-      const saved = storage.getItem(storageKey);
+      const saved = localStorage.getItem(storageKey);
       if (saved) {
-        const parsedData = JSON.parse(saved);
-        // Decrypt if encryption was used
-        if (encryptData && parsedData.encrypted) {
-          parsedData.data = JSON.parse(simpleDecrypt(parsedData.data));
-        }
-        return parsedData;
+        return JSON.parse(saved);
       }
     } catch (error) {
       console.error('Erro ao carregar dados salvos:', error);
     }
     return null;
-  }, [storageKey, useSessionStorage, encryptData]);
+  }, [storageKey]);
 
-  // Salvar dados no storage
+  // Salvar dados no localStorage
   const saveToStorage = useCallback((dataToSave: T) => {
     try {
-      const storage = getStorage();
-      const dataToStore = {
+      localStorage.setItem(storageKey, JSON.stringify({
         data: dataToSave,
-        timestamp: new Date().toISOString(),
-        encrypted: encryptData
-      };
-      
-      // Encrypt if option is enabled
-      if (encryptData) {
-        dataToStore.data = simpleEncrypt(JSON.stringify(dataToSave));
-      }
-      
-      storage.setItem(storageKey, JSON.stringify(dataToStore));
+        timestamp: new Date().toISOString()
+      }));
     } catch (error) {
-      console.error('Erro ao salvar no storage:', error);
+      console.error('Erro ao salvar no localStorage:', error);
     }
-  }, [storageKey, useSessionStorage, encryptData]);
+  }, [storageKey]);
 
   // Função de salvamento
   const save = useCallback(async (dataToSave: T = data) => {
@@ -97,7 +58,7 @@ export const useAutoSave = <T extends Record<string, any>>(
     setIsSaving(true);
     
     try {
-      // Salvar no storage primeiro
+      // Salvar no localStorage primeiro
       saveToStorage(dataToSave);
       
       // Se houver função de salvamento customizada
@@ -110,15 +71,14 @@ export const useAutoSave = <T extends Record<string, any>>(
       
       // Mostrar notificação apenas se não for salvamento automático silencioso
       if (timeoutRef.current) {
-        const storageType = useSessionStorage ? 'sessão' : 'local';
-        showInfo(`Dados salvos automaticamente no ${storageType}storage`);
+        showInfo('Dados salvos automaticamente');
       }
     } catch (error) {
       console.error('Erro ao salvar:', error);
     } finally {
       setIsSaving(false);
     }
-  }, [data, isSaving, onSave, saveToStorage, useSessionStorage]);
+  }, [data, isSaving, onSave, saveToStorage]);
 
   // Debounced save
   const debouncedSave = useCallback((newData: T) => {
@@ -176,15 +136,14 @@ export const useAutoSave = <T extends Record<string, any>>(
   // Limpar dados salvos
   const clearSavedData = useCallback(() => {
     try {
-      const storage = getStorage();
-      storage.removeItem(storageKey);
+      localStorage.removeItem(storageKey);
       setHasUnsavedChanges(false);
       setLastSaved(null);
       showSuccess('Dados salvos removidos com sucesso');
     } catch (error) {
       console.error('Erro ao limpar dados:', error);
     }
-  }, [storageKey, useSessionStorage]);
+  }, [storageKey]);
 
   return {
     isSaving,
@@ -192,8 +151,6 @@ export const useAutoSave = <T extends Record<string, any>>(
     hasUnsavedChanges,
     forceSave,
     clearSavedData,
-    loadSavedData,
-    storageType: useSessionStorage ? 'sessionStorage' : 'localStorage',
-    isEncrypted: encryptData
+    loadSavedData
   };
 };

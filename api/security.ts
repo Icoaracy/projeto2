@@ -1,103 +1,197 @@
-// Add this function to the existing security.ts file
+import DOMPurify from 'dompurify';
+import CryptoJS from 'crypto-js';
+import { kv } from '@vercel/kv';
 
-// Recursive validation and sanitization for nested objects
-export function validateAndSanitizeInput(data: any, maxDepth: number = 10, currentDepth: number = 0): any {
-  // Prevent infinite recursion
-  if (currentDepth > maxDepth) {
-    throw new Error('Input validation depth exceeded');
-  }
-
-  // Handle null/undefined
-  if (data === null || data === undefined) {
-    return data;
-  }
-
-  // Handle strings - sanitize and validate
-  if (typeof data === 'string') {
-    const sanitized = sanitizeHtml(data);
-    
-    // Validate length
-    if (sanitized.length > 10000) { // Reasonable max length for any field
-      throw new Error('Input too long');
-    }
-    
-    return sanitized;
-  }
-
-  // Handle numbers - validate range
-  if (typeof data === 'number') {
-    if (!isFinite(data) || data > Number.MAX_SAFE_INTEGER || data < Number.MIN_SAFE_INTEGER) {
-      throw new Error('Invalid number');
-    }
-    return data;
-  }
-
-  // Handle booleans - return as-is
-  if (typeof data === 'boolean') {
-    return data;
-  }
-
-  // Handle arrays - recursively validate each element
-  if (Array.isArray(data)) {
-    if (data.length > 1000) { // Reasonable max array size
-      throw new Error('Array too large');
-    }
-    
-    return data.map(item => validateAndSanitizeInput(item, maxDepth, currentDepth + 1));
-  }
-
-  // Handle objects - recursively validate each property
-  if (typeof data === 'object') {
-    const keys = Object.keys(data);
-    if (keys.length > 100) { // Reasonable max object properties
-      throw new Error('Object too large');
-    }
-
-    const sanitized: any = {};
-    for (const key of keys) {
-      // Validate property names
-      if (typeof key !== 'string' || key.length > 100 || !/^[a-zA-Z0-9_-]+$/.test(key)) {
-        throw new Error('Invalid property name');
-      }
-      
-      sanitized[key] = validateAndSanitizeInput(data[key], maxDepth, currentDepth + 1);
-    }
-    return sanitized;
-  }
-
-  // Reject any other types
-  throw new Error('Invalid input type');
+// Generate a cryptographically secure nonce for CSP
+export function generateNonce(): string {
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-// Whitelist validation for specific endpoints
-export function validateContactForm(data: any): { name: string; email: string; message: string } {
-  // Define expected structure
-  const expectedFields = ['name', 'email', 'message'];
+// Enhanced HTML sanitization using DOMPurify
+export function sanitizeHtml(input: string): string {
+  if (typeof window !== 'undefined') {
+    return DOMPurify.sanitize(input, {
+      ALLOWED_TAGS: [],
+      ALLOWED_ATTR: [],
+      KEEP_CONTENT: true
+    });
+  }
   
-  // Check for unexpected fields
-  const unexpectedFields = Object.keys(data).filter(key => !expectedFields.includes(key));
-  if (unexpectedFields.length > 0) {
-    throw new Error('Unexpected fields in request');
+  // Server-side fallback sanitization
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;')
+    .replace(/javascript:/gi, '')
+    .replace(/data:/gi, '')
+    .replace(/vbscript:/gi, '');
+}
+
+// Validate email format with stricter regex
+export function validateEmail(email: string): boolean {
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  return emailRegex.test(email) && email.length <= 254;
+}
+
+// Enhanced rate limiting with persistent storage using Vercel KV
+export class RateLimiter {
+  private readonly maxRequests: number;
+  private readonly windowMs: number;
+
+  constructor(maxRequests: number = 5, windowMs: number = 60000) {
+    this.maxRequests = maxRequests;
+    this.windowMs = windowMs;
   }
 
-  // Validate each field
-  const { name, email, message } = data;
-  
-  if (typeof name !== 'string' || name.length < 1 || name.length > 100) {
-    throw new Error('Invalid name');
-  }
-  
-  if (typeof email !== 'string' || !validateEmail(email)) {
-    throw new Error('Invalid email');
-  }
-  
-  if (typeof message !== 'string' || message.length < 10 || message.length > 2000) {
-    throw new Error('Invalid message');
+  // Validate and sanitize IP address
+  private sanitizeIP(ip: string): string {
+    if (!ip || ip === 'unknown') return 'unknown';
+    
+    // Remove potential injection attempts
+    const cleanIP = ip.replace(/[^\d.:]/g, '').trim();
+    
+    // Basic IP validation
+    const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
+    const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
+    
+    if (ipv4Regex.test(cleanIP) || ipv6Regex.test(cleanIP)) {
+      return cleanIP;
+    }
+    
+    return 'invalid';
   }
 
-  return {
-    name: sanitizeHtml(name.trim()),
-    email: email.trim().toLowerCase(),
-    message: sanitizeHtml(message.trim())
-  };
+  async isAllowed(identifier: string): Promise<boolean> {
+    const sanitizedIP = this.sanitizeIP(identifier);
+    const now = Date.now();
+    const key = `rate_limit:${sanitizedIP}`;
+    const windowStart = now - this.windowMs;
+
+    try {
+      // Get existing requests from KV
+      const existingData = await kv.get<{ timestamps: number[] }>(key);
+      const timestamps = existingData?.timestamps || [];
+
+      // Filter out old requests outside the window
+      const validTimestamps = timestamps.filter(timestamp => timestamp > windowStart);
+
+      // Check if limit exceeded
+      if (validTimestamps.length >= this.maxRequests) {
+        return false;
+      }
+
+      // Add current request timestamp
+      validTimestamps.push(now);
+
+      // Store updated timestamps with expiration
+      await kv.set(key, { timestamps: validTimestamps }, { px: this.windowMs });
+
+      return true;
+    } catch (error) {
+      console.error('Rate limiting error:', error);
+      // Fail open - allow request if KV is unavailable
+      return true;
+    }
+  }
+
+  // Method to get current rate limit status
+  async getStatus(identifier: string): Promise<{ remaining: number; resetTime: number }> {
+    const sanitizedIP = this.sanitizeIP(identifier);
+    const now = Date.now();
+    const key = `rate_limit:${sanitizedIP}`;
+    const windowStart = now - this.windowMs;
+
+    try {
+      const existingData = await kv.get<{ timestamps: number[] }>(key);
+      const timestamps = existingData?.timestamps || [];
+      const validTimestamps = timestamps.filter(timestamp => timestamp > windowStart);
+      
+      const remaining = Math.max(0, this.maxRequests - validTimestamps.length);
+      const resetTime = validTimestamps.length > 0 
+        ? Math.min(...validTimestamps) + this.windowMs 
+        : now + this.windowMs;
+
+      return { remaining, resetTime };
+    } catch (error) {
+      console.error('Rate limit status error:', error);
+      return { remaining: this.maxRequests, resetTime: now + this.windowMs };
+    }
+  }
+}
+
+// Enhanced CSRF protection using signed tokens
+export class CSRFProtection {
+  private static readonly SECRET_KEY = process.env.CSRF_SECRET || 'default-secret-key-change-in-production';
+  private static readonly TOKEN_EXPIRY = 3600000; // 1 hour
+
+  static generateToken(): string {
+    const timestamp = Date.now();
+    const random = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    
+    const payload = `${timestamp}.${random}`;
+    const signature = CryptoJS.HmacSHA256(payload, this.SECRET_KEY).toString();
+    
+    return `${payload}.${signature}`;
+  }
+
+  static validateToken(token: string): boolean {
+    if (!token || typeof token !== 'string') {
+      return false;
+    }
+
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return false;
+    }
+
+    const [timestampStr, random, signature] = parts;
+    
+    // Check timestamp
+    const timestamp = parseInt(timestampStr, 10);
+    if (isNaN(timestamp) || Date.now() - timestamp > this.TOKEN_EXPIRY) {
+      return false;
+    }
+
+    // Verify signature
+    const payload = `${timestampStr}.${random}`;
+    const expectedSignature = CryptoJS.HmacSHA256(payload, this.SECRET_KEY).toString();
+    
+    return CryptoJS.HmacSHA256(payload, this.SECRET_KEY).toString() === signature;
+  }
+}
+
+// Generic error messages to prevent information disclosure
+export const SECURITY_MESSAGES = {
+  GENERIC_ERROR: 'Request failed. Please try again.',
+  RATE_LIMIT: 'Too many requests. Please try again later.',
+  INVALID_TOKEN: 'Invalid request. Please refresh the page.',
+  VALIDATION_ERROR: 'Invalid input provided.',
+  SERVER_ERROR: 'An error occurred. Please try again later.'
+} as const;
+
+// Constant-time comparison to prevent timing attacks
+export function constantTimeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+
+  return result === 0;
+}
+
+// Add random jitter to prevent timing analysis
+export function addRandomJitter(baseDelay: number = 500): number {
+  const jitter = Math.random() * 200; // 0-200ms jitter
+  return baseDelay + jitter;
 }
