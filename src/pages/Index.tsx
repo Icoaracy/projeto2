@@ -6,10 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { showSuccess, showError } from "@/utils/toast";
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import { Mail, Phone, MapPin, Star, Zap, Shield, AlertTriangle } from "lucide-react";
+import { Mail, Phone, MapPin, Star, Zap, Shield, AlertTriangle, FileText, ArrowRight } from "lucide-react";
 import { apiClient } from "@/lib/api";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -110,8 +112,13 @@ const Index = () => {
             Transform your ideas into reality with our powerful platform. Built with security-first architecture to protect your data.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="text-lg px-8">
-              Get Started
+            <Button 
+              size="lg" 
+              className="text-lg px-8"
+              onClick={() => navigate("/create-dfd")}
+            >
+              Create DFD
+              <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
             <Button variant="outline" size="lg" className="text-lg px-8">
               Learn More
@@ -183,6 +190,71 @@ const Index = () => {
                 </CardDescription>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* DFD Feature Section */}
+      <section className="py-20 px-4 bg-gray-50">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <FileText className="w-6 h-6 text-blue-600" />
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900">Create Professional DFDs</h2>
+              </div>
+              <p className="text-lg text-gray-600 mb-6">
+                Generate comprehensive Data Flow Diagrams with our advanced form system. Perfect for procurement processes and documentation.
+              </p>
+              <ul className="space-y-3 mb-8">
+                <li className="flex items-center gap-3">
+                  <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                    <Check className="w-4 h-4 text-green-600" />
+                  </div>
+                  <span className="text-gray-700">Process number validation with AND condition logic</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                    <Check className="w-4 h-4 text-green-600" />
+                  </div>
+                  <span className="text-gray-700">AI-powered text improvement</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                    <Check className="w-4 h-4 text-green-600" />
+                  </div>
+                  <span className="text-gray-700">PDF generation with professional formatting</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                    <Check className="w-4 h-4 text-green-600" />
+                  </div>
+                  <span className="text-gray-700">Comprehensive form validation</span>
+                </li>
+              </ul>
+              <Button 
+                size="lg" 
+                className="text-lg px-8"
+                onClick={() => navigate("/create-dfd")}
+              >
+                Start Creating DFD
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </div>
+            <div className="bg-white p-8 rounded-lg shadow-lg">
+              <div className="space-y-4">
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-200 rounded w-full"></div>
+                <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                <div className="h-4 bg-gray-200 rounded w-4/5"></div>
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-200 rounded w-full"></div>
+                <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

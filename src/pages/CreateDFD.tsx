@@ -123,7 +123,7 @@ const CreateDFD = () => {
   const [isImprovingText, setIsImprovingText] = useState(false);
   const [processNumberError, setProcessNumberError] = useState("");
 
-  // Function to validate process number according to specified algorithm
+  // Function to validate process number according to specified algorithm with AND condition
   const validateProcessNumber = (numbers: string): boolean => {
     if (numbers.length !== 17) {
       return false;
@@ -175,7 +175,7 @@ const CreateDFD = () => {
     const firstDigitValid = calculatedDigit === penultimateDigit;
     const secondDigitValid = calculatedDigit2 === lastDigit;
     
-    // Only return false if either digit is invalid
+    // Only return false if either digit is invalid (AND condition)
     return firstDigitValid && secondDigitValid;
   };
 
@@ -509,7 +509,7 @@ const CreateDFD = () => {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => navigate("/create-artifact")}
+              onClick={() => navigate("/")}
               className="flex items-center gap-2"
             >
               <ArrowLeft className="w-4 h-4" />
