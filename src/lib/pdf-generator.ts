@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { formatProcessNumber } from '@/pages/CreateDFD';
+import { sanitizeHtml } from '@/lib/security';
 
 export interface PDFOptions {
   includeWatermark?: boolean;
@@ -14,6 +15,42 @@ export interface PDFOptions {
     left: number;
   };
 }
+
+// Sanitize text content for PDF generation
+const sanitizePDFText = (text: string): string => {
+  if (!text || typeof text !== 'string') return '';
+  
+  // First sanitize HTML to prevent XSS
+  const sanitized = sanitizeHtml(text);
+  
+  // Remove any remaining potentially problematic characters for PDF
+  return sanitized
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+    .replace(/[\u2028\u2029]/g, ' ') // Replace line/paragraph separators
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .trim();
+};
+
+// Sanitize form data recursively
+const sanitizeFormData = (data: any): any => {
+  if (typeof data === 'string') {
+    return sanitizePDFText(data);
+  }
+  
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizeFormData(item));
+  }
+  
+  if (typeof data === 'object' && data !== null) {
+    const sanitized: any = {};
+    for (const [key, value] of Object.entries(data)) {
+      sanitized[key] = sanitizeFormData(value);
+    }
+    return sanitized;
+  }
+  
+  return data;
+};
 
 export class AdvancedPDFGenerator {
   private pdf: jsPDF;
@@ -87,6 +124,8 @@ export class AdvancedPDFGenerator {
   }
 
   addTitle(text: string, level: number = 1): void {
+    // Sanitize title text
+    const sanitizedText = sanitizePDFText(text);
     const fontSize = level === 1 ? 16 : level === 2 ? 14 : 12;
     this.pdf.setFontSize(fontSize);
     this.pdf.setFont('helvetica', 'bold');
@@ -94,12 +133,12 @@ export class AdvancedPDFGenerator {
     this.addPageIfNeeded(15);
     
     this.yPosition += 5;
-    this.pdf.text(text, this.options.margins.left, this.yPosition);
+    this.pdf.text(sanitizedText, this.options.margins.left, this.yPosition);
     this.yPosition += 10;
     
     // Adicionar ao sumário
     if (this.options.includeTableOfContents && level <= 2) {
-      this.tocEntries.push({ title: text, page: this.currentPage });
+      this.tocEntries.push({ title: sanitizedText, page: this.currentPage });
     }
     
     this.pdf.setFont('helvetica', 'normal');
@@ -107,9 +146,11 @@ export class AdvancedPDFGenerator {
   }
 
   addText(text: string, indent: number = 0): void {
-    if (!text || text.trim() === '') return;
+    // Sanitize text content
+    const sanitizedText = sanitizePDFText(text);
+    if (!sanitizedText) return;
     
-    const lines = this.pdf.splitTextToSize(text, 170 - indent);
+    const lines = this.pdf.splitTextToSize(sanitizedText, 170 - indent);
     const requiredHeight = lines.length * this.options.lineHeight;
     
     this.addPageIfNeeded(requiredHeight);
@@ -142,8 +183,11 @@ export class AdvancedPDFGenerator {
   }
 
   addHeader(formData: any): void {
+    // Sanitize form data before using
+    const sanitizedFormData = sanitizeFormData(formData);
+    
     this.addTitle('DIAGRAMA DE FLUXO DE DADOS (DFD)', 1);
-    this.addText(`Número do Processo: ${formatProcessNumber(formData.numeroProcesso)}`);
+    this.addText(`Número do Processo: ${formatProcessNumber(sanitizedFormData.numeroProcesso)}`);
     this.addText(`Data de Geração: ${new Date().toLocaleDateString('pt-BR')}`);
     this.addText('');
   }
@@ -153,8 +197,12 @@ export class AdvancedPDFGenerator {
   }
 
   generate(content: any, formData: any): jsPDF {
+    // Sanitize all input data
+    const sanitizedContent = sanitizeFormData(content);
+    const sanitizedFormData = sanitizeFormData(formData);
+    
     // Adicionar cabeçalho
-    this.addHeader(formData);
+    this.addHeader(sanitizedFormData);
     
     // Gerar sumário se habilitado
     if (this.options.includeTableOfContents) {
@@ -162,7 +210,7 @@ export class AdvancedPDFGenerator {
     }
     
     // Adicionar conteúdo principal
-    Object.entries(content).forEach(([sectionTitle, sectionContent]) => {
+    Object.entries(sanitizedContent).forEach(([sectionTitle, sectionContent]) => {
       if (typeof sectionContent === 'string' && sectionContent.trim()) {
         this.addSection(sectionTitle, sectionContent, 1);
       }
@@ -175,11 +223,22 @@ export class AdvancedPDFGenerator {
   }
 
   save(filename: string): void {
-    this.pdf.save(filename);
+    // Sanitize filename
+    const sanitizedFilename = sanitizePDFText(filename).replace(/[^a-zA-Z0-9._-]/g, '_');
+    this.pdf.save(sanitizedFilename);
   }
 }
 
 export const generateAdvancedPDF = (content: any, formData: any, options?: PDFOptions) => {
+  // Validate inputs before processing
+  if (!content || typeof content !== 'object') {
+    throw new Error('Invalid content provided for PDF generation');
+  }
+  
+  if (!formData || typeof formData !== 'object') {
+    throw new Error('Invalid form data provided for PDF generation');
+  }
+  
   const generator = new AdvancedPDFGenerator(options);
   const pdf = generator.generate(content, formData);
   

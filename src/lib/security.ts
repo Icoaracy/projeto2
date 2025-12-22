@@ -12,9 +12,23 @@ export function generateNonce(): string {
   return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-// Basic HTML sanitization for client-side use
+// Enhanced HTML sanitization using DOMPurify when available, fallback to basic sanitization
 export function sanitizeHtml(input: string): string {
   if (!input) return '';
+  
+  // Use DOMPurify if available (client-side)
+  if (typeof window !== 'undefined' && window.DOMPurify) {
+    try {
+      return window.DOMPurify.sanitize(input, {
+        ALLOWED_TAGS: [], // Remove all HTML tags
+        ALLOWED_ATTR: [], // Remove all attributes
+        KEEP_CONTENT: true // Keep the text content
+      });
+    } catch (error) {
+      console.error('DOMPurify sanitization error:', error);
+      // Fallback to basic sanitization
+    }
+  }
   
   // Basic client-side sanitization - server should do thorough sanitization
   return input
@@ -26,7 +40,8 @@ export function sanitizeHtml(input: string): string {
     .replace(/\//g, '&#x2F;')
     .replace(/javascript:/gi, '')
     .replace(/data:/gi, '')
-    .replace(/vbscript:/gi, '');
+    .replace(/vbscript:/gi, '')
+    .replace(/on\w+=/gi, ''); // Remove event handlers
 }
 
 // Validate email format with stricter regex
@@ -64,4 +79,13 @@ export function preventXSS(input: string): string {
 // Check if running in browser environment
 export function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof window.document !== 'undefined';
+}
+
+// Add DOMPurify type declaration for client-side
+declare global {
+  interface Window {
+    DOMPurify?: {
+      sanitize: (input: string, config?: any) => string;
+    };
+  }
 }
