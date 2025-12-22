@@ -9,7 +9,9 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "deploy": "vercel --prod",
+    "deploy:dev": "vercel"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -83,7 +85,8 @@
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
-    "vite": "^6.3.4"
+    "vite": "^6.3.4",
+    "vercel": "^37.4.0"
   },
   "engines": {
     "node": ">=18.0.0",

@@ -62,34 +62,102 @@ npm run preview
 
 ## 🚀 Deploy no Vercel
 
-### Configuração Automática
+### Opção 1: Deploy Automático (Recomendado)
 
-1. Faça push do código para o GitHub
-2. Conecte o repositório ao Vercel
-3. O Vercel detectará automaticamente o framework Vite
-4. Configure as variáveis de ambiente (se necessário)
-5. Deploy automático
-
-### Configuração Manual
-
-1. Instale a CLI do Vercel:
+1. **Faça push do código para o GitHub:**
 ```bash
-npm i -g vercel
+git add .
+git commit -m "Ready for Vercel deployment"
+git push origin main
 ```
 
-2. Faça o deploy:
+2. **Configure no Vercel:**
+   - Acesse [vercel.com](https://vercel.com)
+   - Clique em "New Project"
+   - Importe seu repositório do GitHub
+   - O Vercel detectará automaticamente o framework Vite
+   - Clique em "Deploy"
+
+3. **Configure variáveis de ambiente (opcional):**
+   - No dashboard do Vercel, vá para Settings → Environment Variables
+   - Adicione `KV_REST_API_URL` e `KV_REST_API_TOKEN` se usar rate limiting
+
+### Opção 2: Deploy via Vercel CLI
+
+1. **Instale o Vercel CLI:**
 ```bash
+# Via npm (recomendado)
+npm install -g vercel
+
+# Ou via npx (sem instalar globalmente)
+npx vercel --version
+```
+
+2. **Faça o login no Vercel:**
+```bash
+vercel login
+```
+
+3. **Faça o deploy:**
+```bash
+# Deploy de desenvolvimento
+vercel
+
+# Deploy de produção
 vercel --prod
 ```
 
-### Variáveis de Ambiente
-
-Opcionalmente, configure o Vercel KV para rate limiting:
+### Opção 3: Deploy via npx (sem instalar)
 
 ```bash
-vercel env add KV_REST_API_URL
-vercel env add KV_REST_API_TOKEN
+# Deploy direto com npx
+npx vercel --prod
+
+# Ou se já tiver feito login antes
+npx vercel login
+npx vercel --prod
 ```
+
+### Opção 4: Deploy via GitHub Actions (Automático)
+
+1. Crie o arquivo `.github/workflows/deploy.yml`:
+```yaml
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build project
+        run: npm run build
+        
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v20
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.ORG_ID }}
+          vercel-project-id: ${{ secrets.PROJECT_ID }}
+          vercel-args: '--prod'
+```
+
+2. Configure os secrets no GitHub:
+   - `VERCEL_TOKEN`
+   - `ORG_ID`
+   - `PROJECT_ID`
 
 ## 🔧 Scripts Disponíveis
 
@@ -121,6 +189,52 @@ vercel env add KV_REST_API_TOKEN
 - Input validation
 - XSS prevention
 - Secure headers
+
+## 🐛 Solução de Problemas
+
+### "command not found: vercel"
+
+**Solução 1: Instale globalmente**
+```bash
+npm install -g vercel
+```
+
+**Solução 2: Use npx**
+```bash
+npx vercel --prod
+```
+
+**Solução 3: Adicione ao PATH**
+```bash
+# Adicione ao seu ~/.bashrc ou ~/.zshrc
+export PATH="$PATH:$(npm config get prefix)/bin"
+```
+
+**Solução 4: Use o Vercel Web**
+   - Acesse [vercel.com](https://vercel.com)
+   - Conecte seu repositório GitHub
+   - Deploy automático
+
+### Erros de Build
+
+1. **Verifique o Node.js:**
+```bash
+node --version  # Deve ser >= 18
+npm --version   # Deve ser >= 8
+```
+
+2. **Limpe o cache:**
+```bash
+rm -rf node_modules package-lock.json
+npm install
+npm run build
+```
+
+3. **Verifique as dependências:**
+```bash
+npm audit fix
+npm update
+```
 
 ## 📝 Licença
 
