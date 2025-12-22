@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { showSuccess, showError } from "@/utils/toast";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Mail, Phone, MapPin, Star, Zap, Shield } from "lucide-react";
+import { apiClient } from "@/lib/api";
 
 const Index = () => {
   const [formData, setFormData] = useState({
@@ -29,11 +30,15 @@ const Index = () => {
     setIsSubmitting(true);
 
     try {
-      // Simulate form submission
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Use secure API endpoint instead of client-side processing
+      const response = await apiClient.post('/api/contact', formData);
       
-      showSuccess("Form submitted successfully!");
-      setFormData({ name: "", email: "", message: "" });
+      if (response.success) {
+        showSuccess(response.message || "Form submitted successfully!");
+        setFormData({ name: "", email: "", message: "" });
+      } else {
+        showError(response.error || "Failed to submit form");
+      }
     } catch (error) {
       showError("Failed to submit form. Please try again.");
     } finally {
@@ -48,10 +53,10 @@ const Index = () => {
         <div className="max-w-6xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
             Welcome to Your
-            <span className="text-blue-600"> Amazing App</span>
+            <span className="text-blue-600"> Secure App</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Transform your ideas into reality with our powerful platform. Built for modern teams who value efficiency and innovation.
+            Transform your ideas into reality with our powerful platform. Built with security-first architecture to protect your data.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="text-lg px-8">
@@ -94,7 +99,7 @@ const Index = () => {
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-gray-600">
-                  Your data is protected with enterprise-grade security and 99.9% uptime guarantee.
+                  Your data is protected with enterprise-grade security and server-side API processing. No secrets exposed to clients.
                 </CardDescription>
               </CardContent>
             </Card>
