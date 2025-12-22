@@ -19,9 +19,13 @@ class ApiClient {
 
   // Generate CSRF token for state-changing requests
   private generateCSRFToken(): string {
-    return Array.from(crypto.getRandomValues(new Uint8Array(32)))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
+    if (typeof window !== 'undefined' && window.crypto) {
+      const array = new Uint8Array(32);
+      window.crypto.getRandomValues(array);
+      return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+    }
+    // Fallback for SSR
+    return Math.random().toString(36).substring(2, 34);
   }
 
   private async request<T>(
@@ -67,11 +71,20 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        // Handle rate limiting specifically
+        // Handle different error scenarios with generic messages
+        let errorMessage = 'Request failed';
+        
         if (response.status === 429) {
-          throw new Error('Rate limit exceeded. Please wait before trying again.');
+          errorMessage = 'Please wait before trying again';
+        } else if (response.status === 403) {
+          errorMessage = 'Request failed';
+        } else if (response.status === 400) {
+          errorMessage = 'Please check your input';
+        } else if (response.status >= 500) {
+          errorMessage = 'Service temporarily unavailable';
         }
-        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        
+        throw new Error(errorMessage);
       }
 
       return data;

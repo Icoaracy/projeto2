@@ -8,6 +8,7 @@ import { showSuccess, showError } from "@/utils/toast";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Mail, Phone, MapPin, Star, Zap, Shield, AlertTriangle } from "lucide-react";
 import { apiClient } from "@/lib/api";
+import { validateFormInput } from "@/lib/security";
 
 const Index = () => {
   const [formData, setFormData] = useState({
@@ -18,35 +19,26 @@ const Index = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Client-side validation
+  // Enhanced client-side validation using security utilities
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    // Name validation
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
-    } else if (formData.name.length > 100) {
-      newErrors.name = "Name must be less than 100 characters";
-    } else if (!/^[a-zA-Z\s'-]+$/.test(formData.name)) {
-      newErrors.name = "Name can only contain letters, spaces, hyphens, and apostrophes";
+    // Validate name
+    const nameValidation = validateFormInput(formData.name, 'name');
+    if (!nameValidation.isValid) {
+      newErrors.name = nameValidation.error || 'Invalid name';
     }
 
-    // Email validation
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (formData.email.length > 254) {
-      newErrors.email = "Email is too long";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
+    // Validate email
+    const emailValidation = validateFormInput(formData.email, 'email');
+    if (!emailValidation.isValid) {
+      newErrors.email = emailValidation.error || 'Invalid email';
     }
 
-    // Message validation
-    if (!formData.message.trim()) {
-      newErrors.message = "Message is required";
-    } else if (formData.message.length < 10) {
-      newErrors.message = "Message must be at least 10 characters";
-    } else if (formData.message.length > 2000) {
-      newErrors.message = "Message must be less than 2000 characters";
+    // Validate message
+    const messageValidation = validateFormInput(formData.message, 'message');
+    if (!messageValidation.isValid) {
+      newErrors.message = messageValidation.error || 'Invalid message';
     }
 
     setErrors(newErrors);
@@ -128,7 +120,7 @@ const Index = () => {
             <div>
               <h3 className="font-semibold">Enhanced Security Active</h3>
               <p className="text-sm text-blue-700">
-                This application uses Content Security Policy (CSP), rate limiting, CSRF protection, and input validation to keep your data safe.
+                This application uses Content Security Policy (CSP), enhanced rate limiting, CSRF protection, and comprehensive input validation to keep your data safe.
               </p>
             </div>
           </div>
@@ -165,7 +157,7 @@ const Index = () => {
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-gray-600">
-                  Your data is protected with enterprise-grade security, CSP headers, rate limiting, and server-side API processing.
+                  Your data is protected with enterprise-grade security, enhanced CSP headers, robust rate limiting, and server-side API processing.
                 </CardDescription>
               </CardContent>
             </Card>

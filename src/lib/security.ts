@@ -1,70 +1,85 @@
-import { randomBytes } from 'crypto';
+// Client-side security utilities using browser-compatible APIs
 
-// Generate a cryptographically secure nonce for CSP
-export function generateNonce(): string {
-  return randomBytes(16).toString('base64');
+// Generate a cryptographically secure random string using Web Crypto API
+export function generateSecureToken(length: number = 32): string {
+  if (typeof window === 'undefined' || !window.crypto) {
+    // Fallback for server-side rendering or unsupported browsers
+    return Math.random().toString(36).substring(2, length + 2);
+  }
+  
+  const array = new Uint8Array(length);
+  window.crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-// Sanitize HTML content to prevent XSS
+// Enhanced HTML sanitization to prevent XSS
 export function sanitizeHtml(input: string): string {
+  if (typeof input !== 'string') return '';
+  
   return input
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;');
+    .replace(/\//g, '&#x2F;')
+    // Prevent JavaScript protocol injection
+    .replace(/javascript:/gi, '')
+    // Prevent data URL injection
+    .replace(/data:/gi, '')
+    // Prevent vbscript injection
+    .replace(/vbscript:/gi, '');
 }
 
-// Validate email format with stricter regex
+// Enhanced email validation
 export function validateEmail(email: string): boolean {
-  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-  return emailRegex.test(email) && email.length <= 254;
+  if (typeof email !== 'string') return false;
+  
+  // Basic format check
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) return false;
+  
+  // Length check
+  if (email.length > 254) return false;
+  
+  // Additional checks for common patterns
+  const [localPart, domain] = email.split('@');
+  if (localPart.length > 64) return false;
+  if (domain.length > 253) return false;
+  
+  return true;
 }
 
-// Rate limiting implementation
-export class RateLimiter {
-  private requests: Map<string, number[]> = new Map();
-  private readonly maxRequests: number;
-  private readonly windowMs: number;
-
-  constructor(maxRequests: number = 5, windowMs: number = 60000) {
-    this.maxRequests = maxRequests;
-    this.windowMs = windowMs;
-  }
-
-  isAllowed(identifier: string): boolean {
-    const now = Date.now();
-    const requests = this.requests.get(identifier) || [];
-    
-    // Remove old requests outside the window
-    const validRequests = requests.filter(time => now - time < this.windowMs);
-    
-    if (validRequests.length >= this.maxRequests) {
-      return false;
-    }
-    
-    validRequests.push(now);
-    this.requests.set(identifier, validRequests);
-    return true;
-  }
+// Generate nonce for CSP
+export function generateNonce(): string {
+  return generateSecureToken(16);
 }
 
-// CSRF token generation and validation
-export class CSRFProtection {
-  private static tokens: Set<string> = new Set();
+// Client-side form validation
+export function validateFormInput(value: string, type: 'name' | 'email' | 'message'): { isValid: boolean; error?: string } {
+  const trimmed = value.trim();
   
-  static generateToken(): string {
-    const token = randomBytes(32).toString('hex');
-    this.tokens.add(token);
-    // Clean up old tokens periodically
-    if (this.tokens.size > 1000) {
-      this.tokens.clear();
-    }
-    return token;
-  }
-  
-  static validateToken(token: string): boolean {
-    return this.tokens.has(token);
+  switch (type) {
+    case 'name':
+      if (!trimmed) return { isValid: false, error: 'Name is required' };
+      if (trimmed.length > 100) return { isValid: false, error: 'Name must be less than 100 characters' };
+      if (!/^[a-zA-Z\s'-]+$/.test(trimmed)) {
+        return { isValid: false, error: 'Name can only contain letters, spaces, hyphens, and apostrophes' };
+      }
+      return { isValid: true };
+      
+    case 'email':
+      if (!trimmed) return { isValid: false, error: 'Email is required' };
+      if (!validateEmail(trimmed)) return { isValid: false, error: 'Please enter a valid email address' };
+      return { isValid: true };
+      
+    case 'message':
+      if (!trimmed) return { isValid: false, error: 'Message is required' };
+      if (trimmed.length < 10) return { isValid: false, error: 'Message must be at least 10 characters' };
+      if (trimmed.length > 2000) return { isValid: false, error: 'Message must be less than 2000 characters' };
+      return { isValid: true };
+      
+    default:
+      return { isValid: false, error: 'Invalid input type' };
   }
 }

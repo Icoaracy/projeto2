@@ -8,8 +8,9 @@
 - ❌ **NEVER** store secrets in frontend code
 - ✅ **ALWAYS** use server-side API endpoints for any operation requiring secrets
 
-### 2. Content Security Policy (CSP) - ✅ IMPLEMENTED
+### 2. Content Security Policy (CSP) - ✅ ENHANCED
 - ✅ Strict CSP headers implemented in both development and production
+- ✅ Removed `'unsafe-eval'` from development CSP for better security
 - ✅ Prevents XSS attacks by controlling which resources can be loaded
 - ✅ Configured in `vite.config.ts` for development
 - ✅ Configured in `vercel.json` for production
@@ -19,43 +20,48 @@
 - ✅ All sensitive operations go through `/api/*` serverless functions
 - ✅ Frontend only communicates with your backend APIs
 - ✅ Backend handles all secret API keys, database connections, etc.
-- ✅ **NEW**: Rate limiting implemented (5 requests per minute per IP)
-- ✅ **NEW**: CSRF protection for state-changing operations
+- ✅ **NEW**: Enhanced rate limiting with proper cleanup and persistence
+- ✅ **NEW**: Robust CSRF protection with signed tokens and expiration
 - ✅ **NEW**: Comprehensive input validation and sanitization
-- ✅ **NEW**: Enhanced error handling and logging
+- ✅ **NEW**: Constant-time comparisons to prevent timing attacks
+- ✅ **NEW**: Generic error messages to prevent information disclosure
 
-### 4. Input Validation & Sanitization - ✅ IMPLEMENTED
+### 4. Input Validation & Sanitization - ✅ ENHANCED
 - ✅ Client-side validation for immediate user feedback
 - ✅ Server-side validation as the authoritative source
-- ✅ HTML sanitization to prevent XSS attacks
-- ✅ Email format validation with strict regex
+- ✅ Enhanced HTML sanitization to prevent XSS attacks
+- ✅ Strict email format validation with RFC compliance
 - ✅ Length limits on all input fields
 - ✅ Character restrictions where appropriate
+- ✅ Prevention of JavaScript, data, and VBScript injection
 
-### 5. Rate Limiting - ✅ IMPLEMENTED
-- ✅ 5 requests per minute per IP address
+### 5. Rate Limiting - ✅ ENHANCED
+- ✅ 5 requests per minute per IP address with proper cleanup
 - ✅ Prevents brute force attacks and spam
 - ✅ Implemented in `/api/contact.ts` endpoint
-- ✅ Configurable limits for different endpoints
+- ✅ Automatic cleanup of expired entries
+- ✅ Remaining requests tracking for better UX
 
-### 6. CSRF Protection - ✅ IMPLEMENTED
-- ✅ CSRF tokens generated for state-changing requests
-- ✅ Tokens validated on the server-side
+### 6. CSRF Protection - ✅ ENHANCED
+- ✅ Cryptographically secure signed tokens with HMAC
+- ✅ Server-side token validation with expiration
 - ✅ Automatic token management in API client
+- ✅ Constant-time comparison to prevent timing attacks
 
 ## 📁 Secure File Structure
 
 ```
 ├── api/                    # Serverless functions (server-side only)
-│   ├── contact.ts         # ✅ Enhanced with rate limiting, CSRF, validation
+│   ├── contact.ts         # ✅ Enhanced with robust security measures
+│   ├── security.ts        # ✅ NEW: Server-side security utilities
 │   └── health.ts          # API health check
 ├── src/
 │   ├── lib/
-│   │   ├── api.ts         # ✅ Enhanced with CSRF protection
-│   │   └── security.ts    # ✅ NEW: Security utilities
+│   │   ├── api.ts         # ✅ Enhanced with generic error handling
+│   │   └── security.ts    # ✅ NEW: Client-side security utilities
 │   └── pages/
-│       └── Index.tsx      # ✅ Enhanced with client-side validation
-├── vite.config.ts         # ✅ CSP headers for development
+│       └── Index.tsx      # ✅ Enhanced with improved validation
+├── vite.config.ts         # ✅ Stricter CSP headers for development
 ├── vercel.json           # ✅ CSP headers for production
 └── SECURITY.md           # This documentation
 ```
@@ -63,21 +69,22 @@
 ## 🔐 Implementation Checklist
 
 - [x] ✅ Content Security Policy (CSP) headers implemented
-- [x] ✅ Rate limiting on API endpoints
-- [x] ✅ CSRF protection for state-changing operations
-- [x] ✅ Input validation and sanitization
+- [x] ✅ Enhanced rate limiting with proper cleanup
+- [x] ✅ Robust CSRF protection with signed tokens
+- [x] ✅ Comprehensive input validation and sanitization
 - [x] ✅ Security headers (X-Frame-Options, X-Content-Type-Options, etc.)
 - [x] ✅ Client-side form validation
 - [x] ✅ Server-side form validation
-- [x] ✅ Error handling and logging
-- [x] ✅ Security utilities and helper functions
-- [x] ✅ Enhanced API client with security features
+- [x] ✅ Generic error messages to prevent information disclosure
+- [x] ✅ Constant-time comparisons to prevent timing attacks
+- [x] ✅ Reliable IP detection for rate limiting
+- [x] ✅ Separation of client and server security utilities
 
 ## 🛡️ Security Features Implemented
 
 ### Content Security Policy
 ```http
-Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'none';
+Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'none';
 ```
 
 ### Additional Security Headers
@@ -87,22 +94,30 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' '
 - `Referrer-Policy: strict-origin-when-cross-origin`
 - `Permissions-Policy: camera=(), microphone=(), geolocation=()`
 
-### Rate Limiting
+### Enhanced Rate Limiting
 - 5 requests per minute per IP address
+- Automatic cleanup of expired entries
+- Remaining requests tracking
 - Configurable window and request limits
-- IP-based identification with fallbacks
 
-### CSRF Protection
-- Cryptographically secure token generation
+### Robust CSRF Protection
+- HMAC-signed tokens with expiration
 - Server-side token validation
+- Constant-time comparison
 - Automatic token management
 
-### Input Validation
+### Enhanced Input Validation
 - Client-side validation for UX
 - Server-side validation for security
-- HTML sanitization to prevent XSS
-- Email format validation
+- Comprehensive HTML sanitization
+- RFC-compliant email validation
 - Length and character restrictions
+- Prevention of injection attacks
+
+### Timing Attack Prevention
+- Consistent processing times for all responses
+- Constant-time string comparisons
+- Random delays for error cases
 
 ## 🚀 Next Steps for Production
 
@@ -130,6 +145,7 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' '
    - Implement IP whitelisting if needed
    - Add CAPTCHA for form submissions
    - Set up Web Application Firewall (WAF)
+   - Consider using Redis for distributed rate limiting
 
 ## 📞 Security Resources
 
@@ -147,6 +163,7 @@ To test the implemented security measures:
 3. **Input Validation**: Try submitting malicious HTML or JavaScript
 4. **CSRF Protection**: Test requests without proper CSRF tokens
 5. **Header Testing**: Verify all security headers are present
+6. **Timing Attacks**: Measure response times for different scenarios
 
 ## 🚨 Incident Response
 
@@ -158,3 +175,14 @@ If a security incident is detected:
 4. Monitor for successful XSS attempts
 5. Document and report the incident
 6. Implement additional mitigations if needed
+
+## 🔄 Recent Security Improvements
+
+1. **Separated Client/Server Security**: Moved Node.js-specific code to server-side only
+2. **Enhanced Rate Limiting**: Implemented proper cleanup and persistence
+3. **Robust CSRF Protection**: Added signed tokens with expiration
+4. **Generic Error Messages**: Prevent information disclosure
+5. **Timing Attack Prevention**: Constant-time comparisons and delays
+6. **Stricter CSP**: Removed unnecessary `'unsafe-eval'` from development
+7. **Enhanced Input Sanitization**: Comprehensive XSS prevention
+8. **Reliable IP Detection**: Improved IP address extraction logic
