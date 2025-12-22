@@ -123,7 +123,7 @@ const CreateDFD = () => {
   const [isImprovingText, setIsImprovingText] = useState(false);
   const [processNumberError, setProcessNumberError] = useState("");
 
-  // Function to validate process number according to the specified algorithm
+  // Function to validate process number according to specified algorithm
   const validateProcessNumber = (numbers: string): boolean => {
     if (numbers.length !== 17) {
       return false;
@@ -135,16 +135,16 @@ const CreateDFD = () => {
     // The penultimate digit is at position 15 (0-indexed: 14)
     const penultimateDigit = digits[14];
     
-    // Calculate the first verification digit (position 16, 0-indexed: 15)
+    // Calculate first verification digit (position 16, 0-indexed: 15)
     // We need to use the first 15 digits (positions 0-14)
     const first15Digits = digits.slice(0, 15);
     
-    // Calculate weighted sum
+    // Calculate weighted sum - CORRECTED: weights in reverse order
     let weightedSum = 0;
     for (let i = 0; i < 15; i++) {
-      // The weight starts at 2 for the first verification digit (position 15 from right)
-      // and increases by 1 for each position
-      const weight = 2 + i;
+      // The weight starts at 2 for the RIGHTMOST digit (position 14 from left, 0 from right)
+      // and increases by 1 moving LEFT
+      const weight = 2 + (14 - i);
       weightedSum += first15Digits[i] * weight;
     }
     
@@ -152,7 +152,7 @@ const CreateDFD = () => {
     const remainder = weightedSum % 11;
     const calculatedDigit = 11 - remainder;
     
-    // The calculated digit should match the penultimate digit
+    // The calculated digit should match penultimate digit
     return calculatedDigit === penultimateDigit;
   };
 
