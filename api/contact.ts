@@ -3,7 +3,7 @@ import { RateLimiter, CSRFProtection, sanitizeHtml, validateEmail, SECURITY_MESS
 // Initialize rate limiter: 5 requests per minute per IP
 const rateLimiter = new RateLimiter(5, 60000);
 
-export default function handler(req: any, res: any) {
+export default async function handler(req: any, res: any) {
   // Set comprehensive security headers
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -25,15 +25,27 @@ export default function handler(req: any, res: any) {
                     req.info?.remoteAddress || 
                     'unknown';
 
-    // Apply rate limiting
-    if (!rateLimiter.isAllowed(clientIP)) {
+    // Apply persistent rate limiting
+    const isAllowed = await rateLimiter.isAllowed(clientIP);
+    if (!isAllowed) {
+      // Get rate limit status for response headers
+      const status = await rateLimiter.getStatus(clientIP);
+      
       // Add consistent timing for rate limit response
       const processingTime = addRandomJitter(500);
       const elapsed = Date.now() - startTime;
       const remainingDelay = Math.max(0, processingTime - elapsed);
       
+      // Set rate limit headers
+      res.setHeader('X-RateLimit-Limit', '5');
+      res.setHeader('X-RateLimit-Remaining', status.remaining.toString());
+      res.setHeader('X-RateLimit-Reset', new Date(status.resetTime).toISOString());
+      
       setTimeout(() => {
-        res.status(429).json({ error: SECURITY_MESSAGES.RATE_LIMIT });
+        res.status(429).json({ 
+          error: SECURITY_MESSAGES.RATE_LIMIT,
+          retryAfter: Math.ceil((status.resetTime - Date.now()) / 1000)
+        });
       }, remainingDelay);
       return;
     }

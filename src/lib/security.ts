@@ -1,5 +1,6 @@
 import DOMPurify from 'dompurify';
 import CryptoJS from 'crypto-js';
+import { kv } from '@vercel/kv';
 
 // Generate a cryptographically secure nonce for CSP
 export function generateNonce(): string {
@@ -37,9 +38,8 @@ export function validateEmail(email: string): boolean {
   return emailRegex.test(email) && email.length <= 254;
 }
 
-// Enhanced rate limiting with IP validation
+// Enhanced rate limiting with persistent storage using Vercel KV
 export class RateLimiter {
-  private requests: Map<string, { count: number; resetTime: number }> = new Map();
   private readonly maxRequests: number;
   private readonly windowMs: number;
 
@@ -66,27 +66,61 @@ export class RateLimiter {
     return 'invalid';
   }
 
-  isAllowed(identifier: string): boolean {
+  async isAllowed(identifier: string): Promise<boolean> {
     const sanitizedIP = this.sanitizeIP(identifier);
     const now = Date.now();
-    const key = sanitizedIP;
+    const key = `rate_limit:${sanitizedIP}`;
+    const windowStart = now - this.windowMs;
 
-    const existing = this.requests.get(key);
-    
-    if (!existing || now > existing.resetTime) {
-      this.requests.set(key, {
-        count: 1,
-        resetTime: now + this.windowMs
-      });
+    try {
+      // Get existing requests from KV
+      const existingData = await kv.get<{ timestamps: number[] }>(key);
+      const timestamps = existingData?.timestamps || [];
+
+      // Filter out old requests outside the window
+      const validTimestamps = timestamps.filter(timestamp => timestamp > windowStart);
+
+      // Check if limit exceeded
+      if (validTimestamps.length >= this.maxRequests) {
+        return false;
+      }
+
+      // Add current request timestamp
+      validTimestamps.push(now);
+
+      // Store updated timestamps with expiration
+      await kv.set(key, { timestamps: validTimestamps }, { px: this.windowMs });
+
+      return true;
+    } catch (error) {
+      console.error('Rate limiting error:', error);
+      // Fail open - allow request if KV is unavailable
       return true;
     }
+  }
 
-    if (existing.count >= this.maxRequests) {
-      return false;
+  // Method to get current rate limit status
+  async getStatus(identifier: string): Promise<{ remaining: number; resetTime: number }> {
+    const sanitizedIP = this.sanitizeIP(identifier);
+    const now = Date.now();
+    const key = `rate_limit:${sanitizedIP}`;
+    const windowStart = now - this.windowMs;
+
+    try {
+      const existingData = await kv.get<{ timestamps: number[] }>(key);
+      const timestamps = existingData?.timestamps || [];
+      const validTimestamps = timestamps.filter(timestamp => timestamp > windowStart);
+      
+      const remaining = Math.max(0, this.maxRequests - validTimestamps.length);
+      const resetTime = validTimestamps.length > 0 
+        ? Math.min(...validTimestamps) + this.windowMs 
+        : now + this.windowMs;
+
+      return { remaining, resetTime };
+    } catch (error) {
+      console.error('Rate limit status error:', error);
+      return { remaining: this.maxRequests, resetTime: now + this.windowMs };
     }
-
-    existing.count++;
-    return true;
   }
 }
 
