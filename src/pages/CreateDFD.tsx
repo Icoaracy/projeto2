@@ -4,16 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Save, FileText, Download, Wand2, CheckCircle, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Save, FileText, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import jsPDF from "jspdf";
-import { aiService } from "@/lib/ai-service";
-import { useSecurity } from "@/hooks/use-security";
+import { AITextImprover } from "@/components/ai-text-improver";
 
 const CreateDFD = () => {
   const navigate = useNavigate();
-  const { canMakeRequest } = useSecurity();
   const [formData, setFormData] = useState({
     // 1. Informações Básicas
     numeroProcesso: "",
@@ -116,37 +114,6 @@ const CreateDFD = () => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isImprovingText, setIsImprovingText] = useState(false);
-  const [improvedText, setImprovedText] = useState("");
-  const [showImprovedText, setShowImprovedText] = useState(false);
-
-  // Format process number: xxxxx.xxxxxx/xxxx-xx
-  const formatProcessNumber = (value: string) => {
-    // Remove all non-numeric characters
-    const cleanValue = value.replace(/\D/g, '');
-    
-    // Limit to 17 digits
-    const limitedValue = cleanValue.slice(0, 17);
-    
-    // Apply format
-    if (limitedValue.length <= 5) {
-      return limitedValue;
-    } else if (limitedValue.length <= 11) {
-      return `${limitedValue.slice(0, 5)}.${limitedValue.slice(5)}`;
-    } else if (limitedValue.length <= 15) {
-      return `${limitedValue.slice(0, 5)}.${limitedValue.slice(5, 11)}/${limitedValue.slice(11)}`;
-    } else {
-      return `${limitedValue.slice(0, 5)}.${limitedValue.slice(5, 11)}/${limitedValue.slice(11, 15)}-${limitedValue.slice(15)}`;
-    }
-  };
-
-  const handleProcessNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formattedValue = formatProcessNumber(e.target.value);
-    setFormData(prev => ({
-      ...prev,
-      numeroProcesso: formattedValue
-    }));
-  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -164,292 +131,6 @@ const CreateDFD = () => {
         [field]: value
       }
     }));
-  };
-
-  const handleImproveText = async () => {
-    if (!formData.objetoAquisicao.trim()) {
-      showError("Por favor, escreva algo sobre o objeto da aquisição antes de solicitar melhoria.");
-      return;
-    }
-
-    if (!canMakeRequest()) {
-      showError("Limite de requisições excedido. Por favor, aguarde antes de tentar novamente.");
-      return;
-    }
-
-    setIsImprovingText(true);
-    setShowImprovedText(false);
-
-    try {
-      const response = await aiService.improveText({
-        text: formData.objetoAquisicao,
-        context: "licitação e objeto da aquisição"
-      });
-
-      if (response.success && response.improvedText) {
-        setImprovedText(response.improvedText);
-        setShowImprovedText(true);
-        showSuccess("Texto melhorado com sucesso!");
-      } else {
-        showError(response.error || "Falha ao melhorar texto");
-      }
-    } catch (error) {
-      showError("Erro ao processar solicitação. Tente novamente.");
-    } finally {
-      setIsImprovingText(false);
-    }
-  };
-
-  const handleAcceptImprovedText = () => {
-    setFormData(prev => ({
-      ...prev,
-      objetoAquisicao: improvedText
-    }));
-    setShowImprovedText(false);
-    showSuccess("Texto atualizado!");
-  };
-
-  const handleRejectImprovedText = () => {
-    setShowImprovedText(false);
-    setImprovedText("");
-  };
-
-  const generatePDFContent = () => {
-    let content = "";
-    
-    // Helper function to add section
-    const addSection = (title: string, fields: Array<{label: string, value: string}>) => {
-      content += `${title}\n`;
-      content += "=".repeat(title.length) + "\n\n";
-      
-      fields.forEach(field => {
-        if (field.value && field.value.trim()) {
-          content += `${field.label}\n`;
-          content += `${field.value}\n\n`;
-        }
-      });
-      
-      content += "\n";
-    };
-
-    // 1. Informações Básicas
-    addSection("1. INFORMAÇ
-
-<dyad-write path="src/pages/CreateDFD.tsx" description="Updated DFD page with AI text improvement and process number formatting">
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Save, FileText, Download, Wand2, CheckCircle, AlertTriangle } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { showSuccess, showError } from "@/utils/toast";
-import jsPDF from "jspdf";
-import { aiService } from "@/lib/ai-service";
-import { useSecurity } from "@/hooks/use-security";
-
-const CreateDFD = () => {
-  const navigate = useNavigate();
-  const { canMakeRequest } = useSecurity();
-  const [formData, setFormData] = useState({
-    // 1. Informações Básicas
-    numeroProcesso: "",
-    
-    // 2. Descrição da Necessidade
-    objetoAquisicao: "",
-    origemNecessidade: "",
-    localAplicacao: "",
-    fundamentoLegal: "",
-    
-    // 3. Área Requisitante
-    areaRequisitante: "",
-    requisitante: "",
-    cargo: "",
-    fundamentoLegalArea: "",
-    
-    // 4. Descrição dos Requisitos da Contratação
-    opcaoExecucaoIndireta: "",
-    opcaoRegimeExecucao: "",
-    essencialidadeObjeto: "",
-    requisitosGerais: "",
-    requisitosEspecificos: {
-      niveisQualidade: "",
-      legislacaoPertinente: "",
-      normasTecnicas: "",
-      requisitosTemporais: "",
-      requisitosGarantia: "",
-      fornecimentoAssociado: ""
-    },
-    criteriosSustentabilidade: "",
-    avaliacaoDuracaoContrato: "",
-    necessidadeTransicao: "",
-    levantamentoRiscos: "",
-    
-    // 5. Levantamento de Mercado
-    alternativa1: {
-      descricao: "",
-      pontosPositivos: "",
-      pontosNegativos: ""
-    },
-    alternativa2: {
-      descricao: "",
-      pontosPositivos: "",
-      pontosNegativos: ""
-    },
-    alternativa3: {
-      descricao: "",
-      pontosPositivos: "",
-      pontosNegativos: ""
-    },
-    impactosPrevistos: "",
-    consultaPublica: "",
-    justificativaAlternativa: "",
-    enquadramentoBemServico: "",
-    
-    // 6. Descrição da solução como um todo
-    descricaoSolucao: "",
-    
-    // 7. Estimativa das Quantidades
-    metodoLevantamentoQuantidades: "",
-    resultadoLevantamento: "",
-    compatibilidadeQuantidades: "",
-    memoriaCalculo: "",
-    
-    // 8. Estimativa do Valor
-    valorTotalEstimativa: "",
-    metodosLevantamentoPrecos: "",
-    precosDentroMercado: "",
-    
-    // 9. Justificativa Parcelamento
-    viabilidadeTecnicaDivisao: "",
-    viabilidadeEconomicaDivisao: "",
-    perdaEscalaDivisao: "",
-    aproveitamentoMercadoDivisao: "",
-    conclusaoParcelamento: "",
-    
-    // 10. Contratações Correlatas
-    contratacoesCorrelatas: "",
-    
-    // 11. Alinhamento Planejamento
-    perspectivaProcessos: "",
-    identificadorDespesa: "",
-    alinhamentoPDL: "",
-    alinhamentoNormas: "",
-    
-    // 12. Benefícios
-    beneficiosContratacao: "",
-    
-    // 13. Providências
-    providenciasAdotar: "",
-    
-    // 14. Impactos Ambientais
-    impactosAmbientais: "",
-    
-    // 15. Declaração de Viabilidade
-    justificativaViabilidade: "",
-    
-    // 16. Equipe de Planejamento
-    equipePlanejamento: ""
-  });
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isImprovingText, setIsImprovingText] = useState(false);
-  const [improvedText, setImprovedText] = useState("");
-  const [showImprovedText, setShowImprovedText] = useState(false);
-
-  // Format process number: xxxxx.xxxxxx/xxxx-xx
-  const formatProcessNumber = (value: string) => {
-    // Remove all non-numeric characters
-    const cleanValue = value.replace(/\D/g, '');
-    
-    // Limit to 17 digits
-    const limitedValue = cleanValue.slice(0, 17);
-    
-    // Apply format
-    if (limitedValue.length <= 5) {
-      return limitedValue;
-    } else if (limitedValue.length <= 11) {
-      return `${limitedValue.slice(0, 5)}.${limitedValue.slice(5)}`;
-    } else if (limitedValue.length <= 15) {
-      return `${limitedValue.slice(0, 5)}.${limitedValue.slice(5, 11)}/${limitedValue.slice(11)}`;
-    } else {
-      return `${limitedValue.slice(0, 5)}.${limitedValue.slice(5, 11)}/${limitedValue.slice(11, 15)}-${limitedValue.slice(15)}`;
-    }
-  };
-
-  const handleProcessNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formattedValue = formatProcessNumber(e.target.value);
-    setFormData(prev => ({
-      ...prev,
-      numeroProcesso: formattedValue
-    }));
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleNestedInputChange = (section: string, field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [section]: {
-        ...(prev as any)[section],
-        [field]: value
-      }
-    }));
-  };
-
-  const handleImproveText = async () => {
-    if (!formData.objetoAquisicao.trim()) {
-      showError("Por favor, escreva algo sobre o objeto da aquisição antes de solicitar melhoria.");
-      return;
-    }
-
-    if (!canMakeRequest()) {
-      showError("Limite de requisições excedido. Por favor, aguarde antes de tentar novamente.");
-      return;
-    }
-
-    setIsImprovingText(true);
-    setShowImprovedText(false);
-
-    try {
-      const response = await aiService.improveText({
-        text: formData.objetoAquisicao,
-        context: "licitação e objeto da aquisição"
-      });
-
-      if (response.success && response.improvedText) {
-        setImprovedText(response.improvedText);
-        setShowImprovedText(true);
-        showSuccess("Texto melhorado com sucesso!");
-      } else {
-        showError(response.error || "Falha ao melhorar texto");
-      }
-    } catch (error) {
-      showError("Erro ao processar solicitação. Tente novamente.");
-    } finally {
-      setIsImprovingText(false);
-    }
-  };
-
-  const handleAcceptImprovedText = () => {
-    setFormData(prev => ({
-      ...prev,
-      objetoAquisicao: improvedText
-    }));
-    setShowImprovedText(false);
-    showSuccess("Texto atualizado!");
-  };
-
-  const handleRejectImprovedText = () => {
-    setShowImprovedText(false);
-    setImprovedText("");
   };
 
   const generatePDFContent = () => {
@@ -632,8 +313,8 @@ const CreateDFD = () => {
         y += 5;
       });
 
-      // Generate filename using only numbers (remove formatting)
-      const processNumber = formData.numeroProcesso.replace(/\D/g, '');
+      // Generate filename
+      const processNumber = formData.numeroProcesso.replace(/[^a-zA-Z0-9]/g, '_');
       const filename = `DFD_${processNumber}.pdf`;
 
       // Save PDF
@@ -692,14 +373,10 @@ const CreateDFD = () => {
                     id="numeroProcesso"
                     name="numeroProcesso"
                     value={formData.numeroProcesso}
-                    onChange={handleProcessNumberChange}
-                    placeholder="xxxxx.xxxxxx/xxxx-xx"
-                    maxLength={21} // 17 digits + 4 formatting characters
+                    onChange={handleInputChange}
+                    placeholder="Informe o número do processo"
                     required
                   />
-                  <p className="text-xs text-gray-500">
-                    Formato: xxxxx.xxxxxx/xxxx-xx (17 dígitos numéricos)
-                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -710,84 +387,18 @@ const CreateDFD = () => {
                 <CardTitle className="text-xl">2. Descrição da Necessidade</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Item 2.1 com AI Text Improver */}
                 <div className="space-y-2">
                   <Label htmlFor="objetoAquisicao">2.1. Objeto da Aquisição</Label>
-                  <Textarea
-                    id="objetoAquisicao"
-                    name="objetoAquisicao"
+                  <AITextImprover
                     value={formData.objetoAquisicao}
-                    onChange={handleInputChange}
+                    onChange={(value) => handleInputChange({ target: { name: 'objetoAquisicao', value } } as any)}
                     placeholder="Descreva o objeto da aquisição. A IA ajudará a melhorar seu texto!"
-                    rows={3}
-                    required
+                    label="Objeto da Aquisição"
+                    context="licitação e aquisição de bens e serviços"
+                    maxLength={2000}
                   />
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-gray-500">
-                      {formData.objetoAquisicao.length}/2000 caracteres
-                    </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleImproveText}
-                      disabled={!formData.objetoAquisicao.trim() || isImprovingText || !canMakeRequest()}
-                      className="flex items-center gap-2"
-                    >
-                      <Wand2 className="w-4 h-4" />
-                      {isImprovingText ? "Melhorando..." : "Melhorar com IA"}
-                    </Button>
-                  </div>
                 </div>
-
-                {/* AI Improved Text Display */}
-                {showImprovedText && improvedText && (
-                  <div className="space-y-4">
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <Wand2 className="w-5 h-5 text-green-600" />
-                          <h4 className="font-semibold text-green-800">Texto Melhorado pela IA</h4>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleRejectImprovedText}
-                          className="text-gray-500 hover:text-gray-700"
-                        >
-                          ✕
-                        </Button>
-                      </div>
-                      <div className="bg-white p-3 rounded border border-green-200">
-                        <p className="text-sm text-gray-800 whitespace-pre-wrap">
-                          {improvedText}
-                        </p>
-                      </div>
-                      <div className="flex gap-2 mt-3">
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={handleAcceptImprovedText}
-                          className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-                        >
-                          <CheckCircle className="w-4 h-4" />
-                          Aceitar
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={handleImproveText}
-                          disabled={isImprovingText}
-                          className="flex items-center gap-2"
-                        >
-                          <Wand2 className="w-4 h-4" />
-                          Tentar Novamente
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
                 
                 <div className="space-y-2">
                   <Label htmlFor="origemNecessidade">2.2. Origem da Necessidade</Label>
