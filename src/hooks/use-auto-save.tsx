@@ -94,22 +94,18 @@ export const useAutoSave = <T extends Record<string, any>>(
   const saveToStorage = useCallback((dataToSave: T) => {
     try {
       const storage = getStorage();
-      const dataToStore = {
+      const dataToStore: any = {
         data: dataToSave,
         timestamp: new Date().toISOString(),
         encrypted: encryptData,
         storageType: useSessionStorage ? 'session' : 'local'
       };
 
-      let finalData = dataToStore;
       if (encryptData) {
-        finalData = {
-          ...dataToStore,
-          data: simpleEncrypt(JSON.stringify(dataToSave))
-        };
+        dataToStore.data = simpleEncrypt(JSON.stringify(dataToSave));
       }
 
-      storage.setItem(storageKey, JSON.stringify(finalData));
+      storage.setItem(storageKey, JSON.stringify(dataToStore));
 
       // Show warning if using localStorage
       if (!useSessionStorage && !storageWarning) {
