@@ -1,4 +1,4 @@
-import { CSRFProtection } from '../src/lib/security';
+import { CSRFProtection } from './security';
 
 export default function handler(req: any, res: any) {
   // Set security headers

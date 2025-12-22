@@ -1,4 +1,4 @@
-import { RateLimiter, CSRFProtection, sanitizeHtml, validateEmail, SECURITY_MESSAGES, addRandomJitter } from '../src/lib/security';
+import { RateLimiter, CSRFProtection, sanitizeHtml, validateEmail, SECURITY_MESSAGES, addRandomJitter } from './security';
 
 // Initialize rate limiter: 5 requests per minute per IP
 const rateLimiter = new RateLimiter(5, 60000);
