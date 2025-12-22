@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { showSuccess, showError } from "@/utils/toast";
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import { Mail, Phone, MapPin, Star, Zap, Shield, AlertTriangle, FileText, ArrowRight, Check } from "lucide-react";
+import { Mail, Phone, MapPin, Star, Zap, Shield, AlertTriangle, FileText, ArrowRight, Check, History, Users, TrendingUp, Clock, Database } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 
@@ -99,17 +99,58 @@ const Index = () => {
     }
   };
 
+  const features = [
+    {
+      icon: Zap,
+      title: "Auto-Salvamento",
+      description: "Seus dados são salvos automaticamente a cada 30 segundos, garantindo que nunca perca seu trabalho."
+    },
+    {
+      icon: Shield,
+      title: "Validação Inteligente",
+      description: "Sistema avançado de validação que detecta erros e oferece sugestões para melhorar seu formulário."
+    },
+    {
+      icon: FileText,
+      title: "Templates Prontos",
+      description: "Comece mais rápido com nossos templates pré-configurados para diferentes tipos de contratações."
+    },
+    {
+      icon: Database,
+      title: "Exportação/Importação",
+      description: "Exporte seus dados como JSON e importe facilmente para backup ou compartilhamento."
+    },
+    {
+      icon: Clock,
+      title: "Atalhos de Teclado",
+      description: "Aumente sua produtividade com atalhos como Ctrl+S para salvar e Ctrl+P para gerar PDF."
+    },
+    {
+      icon: Users,
+      title: "IA Assistente",
+      description: "Melhore seus textos com inteligência artificial para maior clareza e profissionalismo."
+    }
+  ];
+
+  const stats = [
+    { label: "Formulários Criados", value: "1,234", icon: FileText },
+    { label: "Usuários Ativos", value: "567", icon: Users },
+    { label: "PDFs Gerados", value: "2,890", icon: Database },
+    { label: "Tempo Economizado", value: "450h", icon: Clock }
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Hero Section */}
       <section className="py-20 px-4">
         <div className="max-w-6xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-            Welcome to Your
-            <span className="text-blue-600"> Secure App</span>
+            Transforme Seus Processos
+            <span className="text-blue-600"> Licitatórios</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Transform your ideas into reality with our powerful platform. Built with security-first architecture to protect your data.
+            Crie Diagramas de Fluxo de Dados profissionais com nossa plataforma inteligente. 
+            Economize tempo, garanta conformidade e melhore a qualidade de seus documentos.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
@@ -117,12 +158,29 @@ const Index = () => {
               className="text-lg px-8"
               onClick={() => navigate("/create-dfd")}
             >
-              Create DFD
+              Criar DFD Agora
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
             <Button variant="outline" size="lg" className="text-lg px-8">
-              Learn More
+              Ver Demonstração
             </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-12 px-4 bg-white border-y border-gray-200">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            {stats.map((stat, index) => (
+              <div key={index} className="text-center">
+                <div className="flex justify-center mb-2">
+                  <stat.icon className="w-8 h-8 text-blue-600" />
+                </div>
+                <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
+                <div className="text-sm text-gray-600">{stat.label}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -133,129 +191,167 @@ const Index = () => {
           <div className="flex items-center gap-3 text-blue-800">
             <Shield className="w-6 h-6" />
             <div>
-              <h3 className="font-semibold">Enhanced Security Active</h3>
+              <h3 className="font-semibold">Segurança e Conformidade Garantidas</h3>
               <p className="text-sm text-blue-700">
-                This application uses Content Security Policy (CSP), rate limiting, CSRF protection, and input validation to keep your data safe.
+                Nossa plataforma utiliza criptografia de ponta, validação avançada e segue todas as 
+                normas da Lei nº 14.133/2021 para garantir a segurança e conformidade dos seus dados.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Features Grid */}
       <section className="py-20 px-4 bg-white">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12">
-            Why Choose Us
+            Recursos Avançados
+          </h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <Card key={index} className="text-center p-6 border-0 shadow-lg hover:shadow-xl transition-shadow">
+                <CardHeader>
+                  <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                    <feature.icon className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <CardTitle className="text-lg">{feature.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-gray-600">
+                    {feature.description}
+                  </CardDescription>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section className="py-20 px-4 bg-gray-50">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12">
+            Como Funciona
           </h2>
           <div className="grid md:grid-cols-3 gap-8">
-            <Card className="text-center p-6 border-0 shadow-lg">
-              <CardHeader>
-                <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                  <Zap className="w-6 h-6 text-blue-600" />
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
+                1
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Preencha o Formulário</h3>
+              <p className="text-gray-600">
+                Utilize nosso formulário intuitivo com validação em tempo real e auto-salvamento.
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
+                2
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Valide e Otimize</h3>
+              <p className="text-gray-600">
+                Nossa IA ajuda a melhorar seus textos e valida a conformidade com as normas.
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
+                3
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Gere o PDF</h3>
+              <p className="text-gray-600">
+                Exporte um PDF profissional com sumário, numeração de páginas e marca d'água.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="py-20 px-4 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12">
+            O Que Dizem Nossos Usuários
+          </h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            <Card className="p-6">
+              <CardContent className="pt-0">
+                <div className="flex items-center mb-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
+                  ))}
                 </div>
-                <CardTitle>Lightning Fast</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-gray-600">
-                  Experience blazing fast performance with our optimized infrastructure and cutting-edge technology.
-                </CardDescription>
+                <p className="text-gray-700 mb-4">
+                  "Reduzi o tempo de criação de DFDs em 70%. A validação automática e os templates são incríveis!"
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                  <div>
+                    <div className="font-semibold">João Silva</div>
+                    <div className="text-sm text-gray-600">Gestor de Contratos</div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
-
-            <Card className="text-center p-6 border-0 shadow-lg">
-              <CardHeader>
-                <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                  <Shield className="w-6 h-6 text-green-600" />
+            
+            <Card className="p-6">
+              <CardContent className="pt-0">
+                <div className="flex items-center mb-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
+                  ))}
                 </div>
-                <CardTitle>Secure & Reliable</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-gray-600">
-                  Your data is protected with enterprise-grade security, CSP headers, rate limiting, and server-side API processing.
-                </CardDescription>
+                <p className="text-gray-700 mb-4">
+                  "A funcionalidade de auto-salvamento salvou meu trabalho várias vezes. Indico para todos!"
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                  <div>
+                    <div className="font-semibold">Maria Santos</div>
+                    <div className="text-sm text-gray-600">Analista de Compras</div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
-
-            <Card className="text-center p-6 border-0 shadow-lg">
-              <CardHeader>
-                <div className="mx-auto w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-4">
-                  <Star className="w-6 h-6 text-purple-600" />
+            
+            <Card className="p-6">
+              <CardContent className="pt-0">
+                <div className="flex items-center mb-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
+                  ))}
                 </div>
-                <CardTitle>Easy to Use</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-gray-600">
-                  Intuitive interface designed for both beginners and experts. No learning curve required.
-                </CardDescription>
+                <p className="text-gray-700 mb-4">
+                  "Os atalhos de teclado e a IA assistente tornaram o processo muito mais eficiente."
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                  <div>
+                    <div className="font-semibold">Pedro Costa</div>
+                    <div className="text-sm text-gray-600">Assessor Jurídico</div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
         </div>
       </section>
 
-      {/* DFD Feature Section */}
-      <section className="py-20 px-4 bg-gray-50">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-blue-600" />
-                </div>
-                <h2 className="text-3xl font-bold text-gray-900">Create Professional DFDs</h2>
-              </div>
-              <p className="text-lg text-gray-600 mb-6">
-                Generate comprehensive Data Flow Diagrams with our advanced form system. Perfect for procurement processes and documentation.
-              </p>
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-center gap-3">
-                  <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                    <Check className="w-4 h-4 text-green-600" />
-                  </div>
-                  <span className="text-gray-700">Process number validation with AND condition logic</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                    <Check className="w-4 h-4 text-green-600" />
-                  </div>
-                  <span className="text-gray-700">AI-powered text improvement</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                    <Check className="w-4 h-4 text-green-600" />
-                  </div>
-                  <span className="text-gray-700">PDF generation with professional formatting</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                    <Check className="w-4 h-4 text-green-600" />
-                  </div>
-                  <span className="text-gray-700">Comprehensive form validation</span>
-                </li>
-              </ul>
-              <Button 
-                size="lg" 
-                className="text-lg px-8"
-                onClick={() => navigate("/create-dfd")}
-              >
-                Start Creating DFD
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            </div>
-            <div className="bg-white p-8 rounded-lg shadow-lg">
-              <div className="space-y-4">
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-4 bg-gray-200 rounded w-full"></div>
-                <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-                <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-                <div className="h-4 bg-gray-200 rounded w-4/5"></div>
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-4 bg-gray-200 rounded w-full"></div>
-                <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-              </div>
-            </div>
-          </div>
+      {/* CTA Section */}
+      <section className="py-20 px-4 bg-blue-600">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+            Pronto para Revolucionar Seus Processos?
+          </h2>
+          <p className="text-xl text-blue-100 mb-8">
+            Junte-se a centenas de profissionais que já economizam tempo e melhoram a qualidade de seus documentos.
+          </p>
+          <Button 
+            size="lg" 
+            className="text-lg px-8 bg-white text-blue-600 hover:bg-gray-100"
+            onClick={() => navigate("/create-dfd")}
+          >
+            Começar Gratuitamente
+            <ArrowRight className="w-5 h-5 ml-2" />
+          </Button>
         </div>
       </section>
 
@@ -263,47 +359,48 @@ const Index = () => {
       <section className="py-20 px-4 bg-gray-50">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12">
-            Get In Touch
+            Entre em Contato
           </h2>
           <div className="grid md:grid-cols-2 gap-12">
             <div>
-              <h3 className="text-2xl font-semibold mb-6">Let's Start a Conversation</h3>
+              <h3 className="text-2xl font-semibold mb-6">Vamos Conversar</h3>
               <p className="text-gray-600 mb-8">
-                Have questions about our services? Want to see a demo? Fill out the form and our team will get back to you within 24 hours.
+                Tem dúvidas sobre nossa plataforma? Quer uma demonstração personalizada? 
+                Nossa equipe está pronta para ajudar!
               </p>
               
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <Mail className="w-5 h-5 text-blue-600" />
-                  <span className="text-gray-600">hello@example.com</span>
+                  <span className="text-gray-600">contato@dfdplataforma.com.br</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Phone className="w-5 h-5 text-blue-600" />
-                  <span className="text-gray-600">+1 (555) 123-4567</span>
+                  <span className="text-gray-600">+55 (11) 3456-7890</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <MapPin className="w-5 h-5 text-blue-600" />
-                  <span className="text-gray-600">123 Business St, City, State 12345</span>
+                  <span className="text-gray-600">São Paulo, SP - Brasil</span>
                 </div>
               </div>
             </div>
 
             <Card>
               <CardHeader>
-                <CardTitle>Send us a message</CardTitle>
+                <CardTitle>Envie sua mensagem</CardTitle>
                 <CardDescription>
-                  We'd love to hear from you
+                  Responderemos em até 24 horas úteis
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Name</Label>
+                    <Label htmlFor="name">Nome</Label>
                     <Input
                       id="name"
                       name="name"
                       type="text"
-                      placeholder="Your name"
+                      placeholder="Seu nome"
                       value={formData.name}
                       onChange={handleInputChange}
                       className={errors.name ? "border-red-500" : ""}
@@ -324,7 +421,7 @@ const Index = () => {
                       id="email"
                       name="email"
                       type="email"
-                      placeholder="your@email.com"
+                      placeholder="seu@email.com"
                       value={formData.email}
                       onChange={handleInputChange}
                       className={errors.email ? "border-red-500" : ""}
@@ -340,11 +437,11 @@ const Index = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="message">Message</Label>
+                    <Label htmlFor="message">Mensagem</Label>
                     <Textarea
                       id="message"
                       name="message"
-                      placeholder="Tell us how we can help you..."
+                      placeholder="Como podemos ajudar você?"
                       value={formData.message}
                       onChange={handleInputChange}
                       className={errors.message ? "border-red-500" : ""}
@@ -359,7 +456,7 @@ const Index = () => {
                       </p>
                     )}
                     <p className="text-xs text-gray-500">
-                      {formData.message.length}/2000 characters
+                      {formData.message.length}/2000 caracteres
                     </p>
                   </div>
                   
@@ -368,7 +465,7 @@ const Index = () => {
                     className="w-full" 
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? "Sending..." : "Send Message"}
+                    {isSubmitting ? "Enviando..." : "Enviar Mensagem"}
                   </Button>
                 </form>
               </CardContent>
@@ -379,12 +476,46 @@ const Index = () => {
 
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12 px-4">
-        <div className="max-w-6xl mx-auto text-center">
-          <h3 className="text-2xl font-bold mb-4">Ready to Get Started?</h3>
-          <p className="text-gray-400 mb-6">Join thousands of satisfied customers today</p>
-          <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
-            Start Free Trial
-          </Button>
+        <div className="max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
+            <div>
+              <h3 className="text-lg font-semibold mb-4">DFD Plataforma</h3>
+              <p className="text-gray-400 text-sm">
+                A solução definitiva para criação de Diagramas de Fluxo de Dados para processos licitatórios.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Produto</h4>
+              <ul className="space-y-2 text-gray-400 text-sm">
+                <li><a href="#" className="hover:text-white">Recursos</a></li>
+                <li><a href="#" className="hover:text-white">Templates</a></li>
+                <li><a href="#" className="hover:text-white">Preços</a></li>
+                <li><a href="#" className="hover:text-white">Demonstração</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Suporte</h4>
+              <ul className="space-y-2 text-gray-400 text-sm">
+                <li><a href="#" className="hover:text-white">Central de Ajuda</a></li>
+                <li><a href="#" className="hover:text-white">Documentação</a></li>
+                <li><a href="#" className="hover:text-white">Contato</a></li>
+                <li><a href="#" className="hover:text-white">Status</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Empresa</h4>
+              <ul className="space-y-2 text-gray-400 text-sm">
+                <li><a href="#" className="hover:text-white">Sobre Nós</a></li>
+                <li><a href="#" className="hover:text-white">Blog</a></li>
+                <li><a href="#" className="hover:text-white">Carreiras</a></li>
+                <li><a href="#" className="hover:text-white">Privacidade</a></li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="border-t border-gray-800 pt-8 text-center text-gray-400 text-sm">
+            <p>&copy; 2024 DFD Plataforma. Todos os direitos reservados.</p>
+          </div>
         </div>
       </footer>
 
