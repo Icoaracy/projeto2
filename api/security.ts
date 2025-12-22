@@ -195,3 +195,178 @@ export function addRandomJitter(baseDelay: number = 500): number {
   const jitter = Math.random() * 200; // 0-200ms jitter
   return baseDelay + jitter;
 }
+
+// NEW: Recursive validation and sanitization for nested objects
+interface ValidationSchema {
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+  required?: boolean;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: RegExp;
+  sanitize?: boolean;
+  properties?: Record<string, ValidationSchema>;
+  items?: ValidationSchema;
+}
+
+// Schema definitions for different endpoints
+export const SCHEMAS = {
+  contact: {
+    type: 'object',
+    required: true,
+    properties: {
+      name: {
+        type: 'string',
+        required: true,
+        minLength: 1,
+        maxLength: 100,
+        sanitize: true,
+        pattern: /^[a-zA-Z\s'-]+$/
+      },
+      email: {
+        type: 'string',
+        required: true,
+        minLength: 5,
+        maxLength: 254,
+        sanitize: true,
+        pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      },
+      message: {
+        type: 'string',
+        required: true,
+        minLength: 10,
+        maxLength: 2000,
+        sanitize: true
+      }
+    }
+  },
+  improveText: {
+    type: 'object',
+    required: true,
+    properties: {
+      text: {
+        type: 'string',
+        required: true,
+        minLength: 10,
+        maxLength: 5000,
+        sanitize: true
+      },
+      context: {
+        type: 'string',
+        required: false,
+        maxLength: 100,
+        sanitize: true
+      }
+    }
+  }
+} as const;
+
+// Recursive validation and sanitization function
+export function validateAndSanitize(data: any, schema: ValidationSchema): any {
+  // Type validation
+  if (schema.type === 'string') {
+    if (typeof data !== 'string') {
+      throw new Error('Expected string value');
+    }
+
+    let sanitized = data;
+
+    // Apply sanitization if required
+    if (schema.sanitize) {
+      sanitized = sanitizeHtml(sanitized);
+    }
+
+    // Length validation
+    if (schema.minLength !== undefined && sanitized.length < schema.minLength) {
+      throw new Error(`Value too short (minimum ${schema.minLength} characters)`);
+    }
+
+    if (schema.maxLength !== undefined && sanitized.length > schema.maxLength) {
+      throw new Error(`Value too long (maximum ${schema.maxLength} characters)`);
+    }
+
+    // Pattern validation
+    if (schema.pattern && !schema.pattern.test(sanitized)) {
+      throw new Error('Invalid format');
+    }
+
+    return sanitized;
+  }
+
+  if (schema.type === 'number') {
+    if (typeof data !== 'number') {
+      throw new Error('Expected number value');
+    }
+    return data;
+  }
+
+  if (schema.type === 'boolean') {
+    if (typeof data !== 'boolean') {
+      throw new Error('Expected boolean value');
+    }
+    return data;
+  }
+
+  if (schema.type === 'object') {
+    if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+      throw new Error('Expected object value');
+    }
+
+    const result: any = {};
+
+    // Validate each property against schema
+    if (schema.properties) {
+      for (const [key, propSchema] of Object.entries(schema.properties)) {
+        // Check if required property is missing
+        if (propSchema.required && !(key in data)) {
+          throw new Error(`Required property '${key}' is missing`);
+        }
+
+        // Only validate if property exists
+        if (key in data) {
+          result[key] = validateAndSanitize(data[key], propSchema);
+        }
+      }
+    }
+
+    // Remove any unexpected properties (whitelist approach)
+    for (const key of Object.keys(data)) {
+      if (!schema.properties || !(key in schema.properties)) {
+        console.warn(`Removing unexpected property: ${key}`);
+        // Don't include unexpected properties in result
+      }
+    }
+
+    return result;
+  }
+
+  if (schema.type === 'array') {
+    if (!Array.isArray(data)) {
+      throw new Error('Expected array value');
+    }
+
+    if (schema.items) {
+      return data.map(item => validateAndSanitize(item, schema.items!));
+    }
+
+    return data;
+  }
+
+  throw new Error(`Unsupported schema type: ${(schema as any).type}`);
+}
+
+// Generic validation middleware for API endpoints
+export function validateRequestBody(schema: ValidationSchema) {
+  return (req: any, res: any, next: any) => {
+    try {
+      // Validate and sanitize the entire request body
+      req.body = validateAndSanitize(req.body, schema);
+      next();
+    } catch (error) {
+      console.error('Validation error:', error);
+      res.status(400).json({ 
+        error: SECURITY_MESSAGES.VALIDATION_ERROR,
+        details: error instanceof Error ? error.message : 'Invalid input'
+      });
+    }
+  };
+}

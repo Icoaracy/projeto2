@@ -3,16 +3,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Download, FileJson, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Upload, Download, FileJson, AlertTriangle, CheckCircle2, Shield, Clock, Database } from "lucide-react";
 import { showSuccess, showError, showInfo } from "@/utils/toast";
 
 interface DataManagerProps {
   formData: any;
   onLoadData: (data: any) => void;
   onClearData: () => void;
+  autoSave: any; // Pass the autoSave hook to access its methods
 }
 
-export const DataManager = ({ formData, onLoadData, onClearData }: DataManagerProps) => {
+export const DataManager = ({ formData, onLoadData, onClearData, autoSave }: DataManagerProps) => {
   const [open, setOpen] = useState(false);
   const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [importMessage, setImportMessage] = useState('');
@@ -23,7 +26,12 @@ export const DataManager = ({ formData, onLoadData, onClearData }: DataManagerPr
       const dataToExport = {
         version: '1.0',
         timestamp: new Date().toISOString(),
-        formData: formData
+        formData: formData,
+        exportInfo: {
+          storageType: autoSave.currentStorageType,
+          encrypted: autoSave.isEncrypted,
+          exportedBy: 'DFD Platform'
+        }
       };
 
       const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
@@ -102,6 +110,10 @@ export const DataManager = ({ formData, onLoadData, onClearData }: DataManagerPr
     }
   };
 
+  const handleStorageTypeChange = (useSessionStorage: boolean, encryptData: boolean) => {
+    autoSave.switchStorageType(useSessionStorage, encryptData);
+  };
+
   const getFormDataStats = () => {
     const filledFields = Object.values(formData).filter(value => {
       if (typeof value === 'string') return value.trim() !== '';
@@ -127,12 +139,77 @@ export const DataManager = ({ formData, onLoadData, onClearData }: DataManagerPr
           Gerenciar Dados
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Gerenciar Dados do Formulário</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6">
+          {/* Security Settings */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-blue-600" />
+                <CardTitle className="text-lg">Configurações de Segurança</CardTitle>
+              </div>
+              <CardDescription>
+                Configure como seus dados são armazenados para maior segurança
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="session-storage" className="text-sm font-medium">
+                    Usar Armazenamento de Sessão
+                  </Label>
+                  <p className="text-xs text-gray-500">
+                    Dados são limpos ao fechar o navegador (mais seguro para computadores compartilhados)
+                  </p>
+                </div>
+                <Switch
+                  id="session-storage"
+                  checked={autoSave.currentStorageType === 'session'}
+                  onCheckedChange={(checked) => handleStorageTypeChange(checked, autoSave.isEncrypted)}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="encrypt-data" className="text-sm font-medium">
+                    Criptografar Dados
+                  </Label>
+                  <p className="text-xs text-gray-500">
+                    Criptografa dados antes de armazenar (proteção adicional)
+                  </p>
+                </div>
+                <Switch
+                  id="encrypt-data"
+                  checked={autoSave.isEncrypted}
+                  onCheckedChange={(checked) => handleStorageTypeChange(autoSave.currentStorageType === 'session', checked)}
+                />
+              </div>
+
+              {autoSave.storageWarning && (
+                <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                  <div className="text-sm text-yellow-800">
+                    <p className="font-medium">Atenção de Segurança</p>
+                    <p>Seus dados estão sendo salvos no armazenamento local do navegador. Em computadores compartilhados, considere usar o armazenamento de sessão.</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <Database className="w-4 h-4 text-blue-600" />
+                <div className="text-sm text-blue-800">
+                  <p className="font-medium">Configuração Atual</p>
+                  <p>Armazenamento: {autoSave.currentStorageType === 'session' ? 'Sessão' : 'Local'} | 
+                     Criptografia: {autoSave.isEncrypted ? 'Ativada' : 'Desativada'}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Statistics */}
           <Card>
             <CardHeader className="pb-3">
@@ -149,6 +226,14 @@ export const DataManager = ({ formData, onLoadData, onClearData }: DataManagerPr
                   {stats.completionPercentage}%
                 </Badge>
               </div>
+              {autoSave.lastSaved && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Último salvamento:</span>
+                  <span className="text-sm text-gray-800">
+                    {autoSave.lastSaved.toLocaleString('pt-BR')}
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
 

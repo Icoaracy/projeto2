@@ -141,11 +141,13 @@ const CreateDFD = () => {
   const [currentSection, setCurrentSection] = useState("basic-info");
   const [showPreview, setShowPreview] = useState(false);
 
-  // Auto-save functionality
+  // Auto-save functionality with enhanced security options
   const autoSave = useAutoSave(formData, {
     interval: 30,
     debounceTime: 2000,
-    storageKey: 'dfd-form-data'
+    storageKey: 'dfd-form-data',
+    useSessionStorage: false, // Default to localStorage for backward compatibility
+    encryptData: false // Default to no encryption for backward compatibility
   });
 
   // Load saved data on mount
@@ -698,7 +700,8 @@ const CreateDFD = () => {
               <DataManager 
                 formData={formData} 
                 onLoadData={handleLoadData} 
-                onClearData={handleClearData} 
+                onClearData={handleClearData}
+                autoSave={autoSave}
               />
               <KeyboardShortcutsHelp shortcuts={shortcuts} />
               <Button
