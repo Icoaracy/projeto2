@@ -1,481 +1,4 @@
-import { useState, useEffect, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Save, FileText, Download, Wand2, Check, X, RefreshCw, AlertTriangle, Keyboard, Eye, EyeOff } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { showSuccess, showError, showInfo } from "@/utils/toast";
-import { apiClient } from "@/lib/api";
-import { useSecurity } from "@/hooks/use-security";
-import { useAutoSave } from "@/hooks/use-auto-save";
-import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
-import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
-import { FormProgress } from "@/components/FormProgress";
-import { FormValidationSummary } from "@/components/FormValidationSummary";
-import { FormTemplates } from "@/components/FormTemplates";
-import { DataManager } from "@/components/DataManager";
-import { validateForm, getFieldValidationIssues } from "@/lib/form-validation";
-import { generateAdvancedPDF } from "@/lib/pdf-generator";
-
-interface ImproveTextResponse {
-  success: boolean;
-  improvedText?: string;
-  error?: string;
-}
-
-const CreateDFD = () => {
-  const navigate = useNavigate();
-  const { canMakeRequest } = useSecurity();
-  const formRef = useRef<HTMLFormElement>(null);
-  
-  const [formData, setFormData] = useState({
-    // 1. Informações Básicas
-    numeroProcesso: "",
-    
-    // 2. Descrição da Necessidade
-    objetoAquisicao: "",
-    objetoAquisicaoOriginal: "",
-    objetoAquisicaoMelhorado: "",
-    showObjetoAquisicaoAI: false,
-    origemNecessidade: "",
-    localAplicacao: "",
-    fundamentoLegal: "",
-    
-    // 3. Área Requisitante
-    areaRequisitante: "",
-    requisitante: "",
-    cargo: "",
-    fundamentoLegalArea: "",
-    
-    // 4. Descrição dos Requisitos da Contratação
-    opcaoExecucaoIndireta: "",
-    opcaoRegimeExecucao: "",
-    essencialidadeObjeto: "",
-    requisitosGerais: "",
-    requisitosEspecificos: {
-      niveisQualidade: "",
-      legislacaoPertinente: "",
-      normasTecnicas: "",
-      requisitosTemporais: "",
-      requisitosGarantia: "",
-      fornecimentoAssociado: ""
-    },
-    criteriosSustentabilidade: "",
-    avaliacaoDuracaoContrato: "",
-    necessidadeTransicao: "",
-    levantamentoRiscos: "",
-    
-    // 5. Levantamento de Mercado
-    alternativa1: {
-      descricao: "",
-      pontosPositivos: "",
-      pontosNegativos: ""
-    },
-    alternativa2: {
-      descricao: "",
-      pontosPositivos: "",
-      pontosNegativos: ""
-    },
-    alternativa3: {
-      descricao: "",
-      pontosPositivos: "",
-      pontosNegativos: ""
-    },
-    impactosPrevistos: "",
-    consultaPublica: "",
-    justificativaAlternativa: "",
-    enquadramentoBemServico: "",
-    
-    // 6. Descrição da solução como um todo
-    descricaoSolucao: "",
-    
-    // 7. Estimativa das Quantidades
-    metodoLevantamentoQuantidades: "",
-    resultadoLevantamento: "",
-    compatibilidadeQuantidades: "",
-    memoriaCalculo: "",
-    
-    // 8. Estimativa do Valor
-    valorTotalEstimacao: "",
-    metodosLevantamentoPrecos: "",
-    precosDentroMercado: "",
-    
-    // 9. Justificativa Parcelamento
-    viabilidadeTecnicaDivisao: "",
-    viabilidadeEconomicaDivisao: "",
-    perdaEscalaDivisao: "",
-    aproveitamentoMercadoDivisao: "",
-    conclusaoParcelamento: "",
-    
-    // 10. Contratações Correlatas
-    contratacoesCorrelatas: "",
-    
-    // 11. Alinhamento Planejamento
-    perspectivaProcessos: "",
-    identificadorDespesa: "",
-    alinhamentoPDL: "",
-    alinhamentoNormas: "",
-    
-    // 12. Benefícios
-    beneficiosContratacao: "",
-    
-    // 13. Providências
-    providenciasAdotar: "",
-    
-    // 14. Impactos Ambientais
-    impactosAmbientais: "",
-    
-    // 15. Declaração de Viabilidade
-    justificativaViabilidade: "",
-    
-    // 16. Equipe de Planejamento
-    equipePlanejamento: ""
-  });
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isImprovingText, setIsImprovingText] = useState(false);
-  const [processNumberError, setProcessNumberError] = useState("");
-  const [showValidation, setShowValidation] = useState(false);
-  const [currentSection, setCurrentSection] = useState("basic-info");
-  const [showPreview, setShowPreview] = useState(false);
-
-  // Auto-save functionality with enhanced security options
-  const autoSave = useAutoSave(formData, {
-    interval: 30,
-    debounceTime: 2000,
-    storageKey: 'dfd-form-data',
-    useSessionStorage: false, // Default to localStorage for backward compatibility
-    encryptData: false // Default to no encryption for backward compatibility
-  });
-
-  // Load saved data on mount
-  useEffect(() => {
-    const savedData = autoSave.loadSavedData();
-    if (savedData && savedData.data) {
-      setFormData(savedData.data);
-      showInfo('Dados recuperados do salvamento automático');
-    }
-  }, [autoSave]);
-
-  // Keyboard shortcuts
-  useKeyboardShortcuts([
-    {
-      key: 's',
-      ctrlKey: true,
-      handler: () => handleForceSave(),
-      description: 'Salvar formulário'
-    },
-    {
-      key: 'p',
-      ctrlKey: true,
-      handler: () => handleSaveAsPDF(),
-      description: 'Gerar PDF'
-    },
-    {
-      key: 'v',
-      ctrlKey: true,
-      handler: () => setShowValidation(!showValidation),
-      description: 'Mostrar/ocultar validação'
-    },
-    {
-      key: 'h',
-      ctrlKey: true,
-      handler: () => setShowPreview(!showPreview),
-      description: 'Mostrar/ocultar preview'
-    }
-  ]);
-
-  // Form sections for progress tracking
-  const formSections = [
-    { id: 'basic-info', title: '1. Informações Básicas', isCompleted: !!formData.numeroProcesso },
-    { id: 'necessidade', title: '2. Descrição da Necessidade', isCompleted: !!formData.objetoAquisicao && !!formData.origemNecessidade },
-    { id: 'area-requisitante', title: '3. Área Requisitante', isCompleted: !!formData.areaRequisitante && !!formData.requisitante },
-    { id: 'requisitos', title: '4. Requisitos da Contratação', isCompleted: !!formData.opcaoExecucaoIndireta && !!formData.requisitosGerais },
-    { id: 'mercado', title: '5. Levantamento de Mercado', isCompleted: !!formData.alternativa1.descricao },
-    { id: 'solucao', title: '6. Descrição da Solução', isCompleted: !!formData.descricaoSolucao },
-    { id: 'quantidades', title: '7. Estimativa de Quantidades', isCompleted: !!formData.metodoLevantamentoQuantidades },
-    { id: 'valor', title: '8. Estimativa de Valor', isCompleted: !!formData.valorTotalEstimacao },
-    { id: 'parcelamento', title: '9. Justificativa Parcelamento', isCompleted: !!formData.conclusaoParcelamento },
-    { id: 'correlatas', title: '10. Contratações Correlatas', isCompleted: true },
-    { id: 'alinhamento', title: '11. Alinhamento Planejamento', isCompleted: !!formData.perspectivaProcessos },
-    { id: 'beneficios', title: '12. Benefícios', isCompleted: !!formData.beneficiosContratacao },
-    { id: 'providencias', title: '13. Providências', isCompleted: !!formData.providenciasAdotar },
-    { id: 'ambientais', title: '14. Impactos Ambientais', isCompleted: !!formData.impactosAmbientais },
-    { id: 'viabilidade', title: '15. Declaração de Viabilidade', isCompleted: !!formData.justificativaViabilidade },
-    { id: 'equipe', title: '16. Equipe de Planejamento', isCompleted: !!formData.equipePlanejamento }
-  ];
-
-  // Validation
-  const validationResult = validateForm(formData);
-  const validationIssues = getFieldValidationIssues(validationResult);
-
-  // Function to validate process number according to specified algorithm with AND condition
-  const validateProcessNumber = (numbers: string): boolean => {
-    if (numbers.length !== 17) {
-      return false;
-    }
-
-    const digits = numbers.split('').map(d => parseInt(d, 10));
-    
-    // 1º DÍGITO VERIFICADOR
-    const penultimateDigit = digits[14];
-    const first15Digits = digits.slice(0, 15);
-    
-    let weightedSum = 0;
-    for (let i = 0; i < 15; i++) {
-      const weight = 2 + (14 - i);
-      weightedSum += first15Digits[i] * weight;
-    }
-    
-    const remainder = weightedSum % 11;
-    const calculatedDigit = 11 - remainder;
-    
-    // 2º DÍGITO VERIFICADOR
-    const lastDigit = digits[16];
-    const first16Digits = digits.slice(0, 16);
-    
-    let weightedSum2 = 0;
-    for (let i = 0; i < 16; i++) {
-      const weight = 2 + (15 - i);
-      weightedSum2 += first16Digits[i] * weight;
-    }
-    
-    const remainder2 = weightedSum2 % 11;
-    const calculatedDigit2 = 11 - remainder2;
-    
-    // Apply AND condition
-    const firstDigitValid = calculatedDigit === penultimateDigit;
-    const secondDigitValid = calculatedDigit2 === lastDigit;
-    
-    return firstDigitValid && secondDigitValid;
-  };
-
-  // Format process number: xxxxx.xxxxxx/xxxx-xx
-  const formatProcessNumber = (value: string): string => {
-    const numbersOnly = value.replace(/\D/g, '').slice(0, 17);
-    
-    if (numbersOnly.length <= 5) {
-      return numbersOnly;
-    } else if (numbersOnly.length <= 11) {
-      return `${numbersOnly.slice(0, 5)}.${numbersOnly.slice(5)}`;
-    } else if (numbersOnly.length <= 15) {
-      return `${numbersOnly.slice(0, 5)}.${numbersOnly.slice(5, 11)}/${numbersOnly.slice(11)}`;
-    } else {
-      return `${numbersOnly.slice(0, 5)}.${numbersOnly.slice(5, 11)}/${numbersOnly.slice(11, 15)}-${numbersOnly.slice(15, 17)}`;
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    
-    if (name === 'numeroProcesso') {
-      const numbersOnly = value.replace(/\D/g, '').slice(0, 17);
-      setFormData(prev => ({
-        ...prev,
-        [name]: numbersOnly
-      }));
-      
-      if (processNumberError) {
-        setProcessNumberError("");
-      }
-      
-      if (numbersOnly.length === 17) {
-        if (!validateProcessNumber(numbersOnly)) {
-          setProcessNumberError("Numero de Processo está errado, revise o número de processo informado");
-        }
-      }
-    } else if (name === 'objetoAquisicao') {
-      setFormData(prev => ({
-        ...prev,
-        objetoAquisicao: value,
-        objetoAquisicaoOriginal: value,
-        showObjetoAquisicaoAI: false
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
-    }
-  };
-
-  const handleNestedInputChange = (section: string, field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [section]: {
-        ...(prev as any)[section],
-        [field]: value
-      }
-    }));
-  };
-
-  const handleForceSave = async () => {
-    try {
-      await autoSave.forceSave();
-      showSuccess('Dados salvos com sucesso!');
-    } catch (error) {
-      showError('Erro ao salvar dados');
-    }
-  };
-
-  const handleApplyTemplate = (template: any) => {
-    setFormData(prev => ({
-      ...prev,
-      ...template.data
-    }));
-    showSuccess('Template aplicado com sucesso!');
-  };
-
-  const handleLoadData = (data: any) => {
-    setFormData(data);
-  };
-
-  const handleClearData = () => {
-    setFormData({
-      numeroProcesso: "",
-      objetoAquisicao: "",
-      objetoAquisicaoOriginal: "",
-      objetoAquisicaoMelhorado: "",
-      showObjetoAquisicaoAI: false,
-      origemNecessidade: "",
-      localAplicacao: "",
-      fundamentoLegal: "",
-      areaRequisitante: "",
-      requisitante: "",
-      cargo: "",
-      fundamentoLegalArea: "",
-      opcaoExecucaoIndireta: "",
-      opcaoRegimeExecucao: "",
-      essencialidadeObjeto: "",
-      requisitosGerais: "",
-      requisitosEspecificos: {
-        niveisQualidade: "",
-        legislacaoPertinente: "",
-        normasTecnicas: "",
-        requisitosTemporais: "",
-        requisitosGarantia: "",
-        fornecimentoAssociado: ""
-      },
-      criteriosSustentabilidade: "",
-      avaliacaoDuracaoContrato: "",
-      necessidadeTransicao: "",
-      levantamentoRiscos: "",
-      alternativa1: {
-        descricao: "",
-        pontosPositivos: "",
-        pontosNegativos: ""
-      },
-      alternativa2: {
-        descricao: "",
-        pontosPositivos: "",
-        pontosNegativos: ""
-      },
-      alternativa3: {
-        descricao: "",
-        pontosPositivos: "",
-        pontosNegativos: ""
-      },
-      impactosPrevistos: "",
-      consultaPublica: "",
-      justificativaAlternativa: "",
-      enquadramentoBemServico: "",
-      descricaoSolucao: "",
-      metodoLevantamentoQuantidades: "",
-      resultadoLevantamento: "",
-      compatibilidadeQuantidades: "",
-      memoriaCalculo: "",
-      valorTotalEstimacao: "",
-      metodosLevantamentoPrecos: "",
-      precosDentroMercado: "",
-      viabilidadeTecnicaDivisao: "",
-      viabilidadeEconomicaDivisao: "",
-      perdaEscalaDivisao: "",
-      aproveitamentoMercadoDivisao: "",
-      conclusaoParcelamento: "",
-      contratacoesCorrelatas: "",
-      perspectivaProcessos: "",
-      identificadorDespesa: "",
-      alinhamentoPDL: "",
-      alinhamentoNormas: "",
-      beneficiosContratacao: "",
-      providenciasAdotar: "",
-      impactosAmbientais: "",
-      justificativaViabilidade: "",
-      equipePlanejamento: ""
-    });
-  };
-
-  const improveTextWithAI = async () => {
-    if (!formData.objetoAquisicao.trim()) {
-      showError("Por favor, escreva o objeto da aquisição antes de solicitar melhoria.");
-      return;
-    }
-
-    if (!canMakeRequest()) {
-      showError("Limite de requisições excedido. Por favor, aguarde antes de tentar novamente.");
-      return;
-    }
-
-    setIsImprovingText(true);
-
-    try {
-      const response = await apiClient.post<ImproveTextResponse>('/api/improve-text', {
-        text: formData.objetoAquisicao,
-        context: "licitação e aquisição de bens e serviços"
-      });
-
-      if (response.success && response.improvedText) {
-        setFormData(prev => ({
-          ...prev,
-          objetoAquisicaoMelhorado: response.improvedText,
-          showObjetoAquisicaoAI: true
-        }));
-        showSuccess("Texto melhorado com sucesso!");
-      } else {
-        showError(response.error || "Falha ao melhorar texto");
-      }
-    } catch (error) {
-      showError("Erro ao processar solicitação. Tente novamente.");
-    } finally {
-      setIsImprovingText(false);
-    }
-  };
-
-  const acceptImprovedText = () => {
-    setFormData(prev => ({
-      ...prev,
-      objetoAquisicao: prev.objetoAquisicaoMelhorado,
-      showObjetoAquisicaoAI: false
-    }));
-    showSuccess("Texto atualizado!");
-  };
-
-  const rejectImprovedText = () => {
-    setFormData(prev => ({
-      ...prev,
-      showObjetoAquisicaoAI: false
-    }));
-  };
-
-  const scrollToSection = (sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setCurrentSection(sectionId);
-    }
-  };
-
-  const handleFieldClick = (fieldId: string) => {
-    const element = document.getElementById(fieldId);
-    if (element) {
-      element.focus();
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  };
-
-  const generatePDFContent = () => {
+const generatePDFContent = () => {
     let content = "";
     
     const addSection = (title: string, fields: Array<{label: string, value: string}>) => {
@@ -618,55 +141,42 @@ const CreateDFD = () => {
     return content;
   };
 
-  const handleSaveAsPDF = async () => {
-    if (!formData.numeroProcesso.trim()) {
-      showError("Por favor, informe o número do processo antes de salvar.");
-      return;
-    }
-
-    if (formData.numeroProcesso.length !== 17) {
-      showError("O número do processo deve ter exatamente 17 dígitos.");
-      return;
-    }
-
-    if (!validateProcessNumber(formData.numeroProcesso)) {
-      showError("Numero de Processo está errado, revise o número de processo informado");
-      return;
-    }
-
-    if (!validationResult.isValid) {
-      showError("Existem erros de validação. Corrija-os antes de gerar o PDF.");
-      setShowValidation(true);
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const content = generatePDFContent();
-      const filename = generateAdvancedPDF(content, formData, {
-        includeWatermark: true,
-        includePageNumbers: true,
-        includeTableOfContents: true,
-        fontSize: 10,
-        lineHeight: 5
-      });
-      
-      showSuccess(`PDF "${filename}" gerado com sucesso!`);
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      showError("Erro ao gerar PDF. Tente novamente.");
-    } finally {
-      setIsSubmitting(false);
-    }
+  // Add preview dialog component
+  const PreviewDialog = () => {
+    if (!showPreview) return null;
+    
+    const previewContent = generatePDFContent();
+    
+    return (
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Visualização do DFD</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-gray-50 p-6 rounded-lg">
+              <h3 className="text-lg font-semibold mb-4">DIAGRAMA DE FLUXO DE DADOS (DFD)</h3>
+              <div className="text-sm text-gray-600 mb-4">
+                <p>Número do Processo: {formatProcessNumber(formData.numeroProcesso)}</p>
+                <p>Data de Geração: {new Date().toLocaleDateString('pt-BR')}</p>
+              </div>
+              <div className="whitespace-pre-wrap text-sm font-mono bg-white p-4 rounded border">
+                {previewContent}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowPreview(false)}>
+                Fechar
+              </Button>
+              <Button onClick={handleSaveAsPDF}>
+                Gerar PDF
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
   };
-
-  const shortcuts = [
-    { keys: ['Ctrl', 'S'], description: 'Salvar formulário' },
-    { keys: ['Ctrl', 'P'], description: 'Gerar PDF' },
-    { keys: ['Ctrl', 'V'], description: 'Mostrar/ocultar validação' },
-    { keys: ['Ctrl', 'H'], description: 'Mostrar/ocultar preview' }
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -712,6 +222,15 @@ const CreateDFD = () => {
               >
                 <Eye className="w-4 h-4" />
                 Validação
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPreview(!showPreview)}
+                className="flex items-center gap-2"
+              >
+                <EyeOff className="w-4 h-4" />
+                Preview
               </Button>
               <Button
                 variant="outline"
@@ -1097,8 +616,8 @@ const CreateDFD = () => {
           </div>
         </div>
       </div>
+
+      {/* Preview Dialog */}
+      <PreviewDialog />
     </div>
   );
-};
-
-export default CreateDFD;
