@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,15 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { showSuccess, showError } from "@/utils/toast";
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import { SecurityStatus } from "@/components/security-status";
-import { Mail, Phone, MapPin, Star, Zap, Shield, AlertTriangle, FileText, Search, CheckCircle, TrendingUp } from "lucide-react";
+import { Mail, Phone, MapPin, Star, Zap, Shield, AlertTriangle } from "lucide-react";
 import { apiClient } from "@/lib/api";
-import { useSecurity } from "@/hooks/use-security";
-import { validateFormInput } from "@/lib/security";
-import { useNavigate } from "react-router-dom";
 
 const Index = () => {
-  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -22,28 +17,36 @@ const Index = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { canMakeRequest, updateRateLimitStatus } = useSecurity();
 
-  // Enhanced client-side validation using security utilities
+  // Client-side validation
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    // Validate name
-    const nameValidation = validateFormInput(formData.name, 'name');
-    if (!nameValidation.isValid) {
-      newErrors.name = nameValidation.error || 'Nome inválido';
+    // Name validation
+    if (!formData.name.trim()) {
+      newErrors.name = "Name is required";
+    } else if (formData.name.length > 100) {
+      newErrors.name = "Name must be less than 100 characters";
+    } else if (!/^[a-zA-Z\s'-]+$/.test(formData.name)) {
+      newErrors.name = "Name can only contain letters, spaces, hyphens, and apostrophes";
     }
 
-    // Validate email
-    const emailValidation = validateFormInput(formData.email, 'email');
-    if (!emailValidation.isValid) {
-      newErrors.email = emailValidation.error || 'Email inválido';
+    // Email validation
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (formData.email.length > 254) {
+      newErrors.email = "Email is too long";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address";
     }
 
-    // Validate message
-    const messageValidation = validateFormInput(formData.message, 'message');
-    if (!messageValidation.isValid) {
-      newErrors.message = messageValidation.error || 'Mensagem inválida';
+    // Message validation
+    if (!formData.message.trim()) {
+      newErrors.message = "Message is required";
+    } else if (formData.message.length < 10) {
+      newErrors.message = "Message must be at least 10 characters";
+    } else if (formData.message.length > 2000) {
+      newErrors.message = "Message must be less than 2000 characters";
     }
 
     setErrors(newErrors);
@@ -67,15 +70,9 @@ const Index = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Check rate limit before proceeding
-    if (!canMakeRequest()) {
-      showError("Limite de requisições excedido. Por favor, aguarde antes de tentar novamente.");
-      return;
-    }
-    
     // Validate form on client side first
     if (!validateForm()) {
-      showError("Por favor, corrija os erros no formulário");
+      showError("Please fix the errors in the form");
       return;
     }
 
@@ -86,19 +83,15 @@ const Index = () => {
       const response = await apiClient.post('/api/contact', formData);
       
       if (response.success) {
-        showSuccess(response.message || "Formulário enviado com sucesso!");
+        showSuccess(response.message || "Form submitted successfully!");
         setFormData({ name: "", email: "", message: "" });
         setErrors({});
-        // Update rate limit status after successful submission
-        await updateRateLimitStatus();
       } else {
-        showError(response.error || "Falha ao enviar formulário");
+        showError(response.error || "Failed to submit form");
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Falha ao enviar formulário. Tente novamente.";
+      const errorMessage = error instanceof Error ? error.message : "Failed to submit form. Please try again.";
       showError(errorMessage);
-      // Update rate limit status after error
-      await updateRateLimitStatus();
     } finally {
       setIsSubmitting(false);
     }
@@ -110,23 +103,18 @@ const Index = () => {
       <section className="py-20 px-4">
         <div className="max-w-6xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-            Análise de Artefatos de
-            <span className="text-blue-600"> Licitação</span>
+            Welcome to Your
+            <span className="text-blue-600"> Secure App</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Plataforma inteligente para análise automatizada de documentos de licitação. 
-            Garanta conformidade e eficiência em seus processos licitatórios com tecnologia de ponta.
+            Transform your ideas into reality with our powerful platform. Built with security-first architecture to protect your data.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              size="lg" 
-              className="text-lg px-8"
-              onClick={() => navigate("/create-artifact")}
-            >
-              Criar Artefato
+            <Button size="lg" className="text-lg px-8">
+              Get Started
             </Button>
             <Button variant="outline" size="lg" className="text-lg px-8">
-              Analisar artefato
+              Learn More
             </Button>
           </div>
         </div>
@@ -138,54 +126,63 @@ const Index = () => {
           <div className="flex items-center gap-3 text-blue-800">
             <Shield className="w-6 h-6" />
             <div>
-              <h3 className="font-semibold">Segurança Avançada Ativa</h3>
+              <h3 className="font-semibold">Enhanced Security Active</h3>
               <p className="text-sm text-blue-700">
-                Esta aplicação utiliza Política de Segurança de Conteúdo (CSP), rate limiting robusto, 
-                proteção CSRF e validação abrangente para proteger seus dados de licitação.
+                This application uses Content Security Policy (CSP), rate limiting, CSRF protection, and input validation to keep your data safe.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Additional Features */}
-      <section className="py-20 px-4 bg-gray-50">
+      {/* Features Section */}
+      <section className="py-20 px-4 bg-white">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12">
-            Recursos Principais
+            Why Choose Us
           </h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="text-center">
-              <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                <FileText className="w-8 h-8 text-blue-600" />
-              </div>
-              <h3 className="font-semibold mb-2">Análise de Editais</h3>
-              <p className="text-sm text-gray-600">Processamento automático de documentos de licitação</p>
-            </div>
-            
-            <div className="text-center">
-              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle className="w-8 h-8 text-green-600" />
-              </div>
-              <h3 className="font-semibold mb-2">Verificação de Conformidade</h3>
-              <p className="text-sm text-gray-600">Validação automática contra requisitos legais</p>
-            </div>
-            
-            <div className="text-center">
-              <div className="mx-auto w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
-                <Zap className="w-8 h-8 text-purple-600" />
-              </div>
-              <h3 className="font-semibold mb-2">Processamento Rápido</h3>
-              <p className="text-sm text-gray-600">Análise em minutos, não em horas</p>
-            </div>
-            
-            <div className="text-center">
-              <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">
-                <Star className="w-8 h-8 text-orange-600" />
-              </div>
-              <h3 className="font-semibold mb-2">Relatórios Detalhados</h3>
-              <p className="text-sm text-gray-600">Insights acionáveis para melhorar propostas</p>
-            </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            <Card className="text-center p-6 border-0 shadow-lg">
+              <CardHeader>
+                <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                  <Zap className="w-6 h-6 text-blue-600" />
+                </div>
+                <CardTitle>Lightning Fast</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription className="text-gray-600">
+                  Experience blazing fast performance with our optimized infrastructure and cutting-edge technology.
+                </CardDescription>
+              </CardContent>
+            </Card>
+
+            <Card className="text-center p-6 border-0 shadow-lg">
+              <CardHeader>
+                <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                  <Shield className="w-6 h-6 text-green-600" />
+                </div>
+                <CardTitle>Secure & Reliable</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription className="text-gray-600">
+                  Your data is protected with enterprise-grade security, CSP headers, rate limiting, and server-side API processing.
+                </CardDescription>
+              </CardContent>
+            </Card>
+
+            <Card className="text-center p-6 border-0 shadow-lg">
+              <CardHeader>
+                <div className="mx-auto w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-4">
+                  <Star className="w-6 h-6 text-purple-600" />
+                </div>
+                <CardTitle>Easy to Use</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription className="text-gray-600">
+                  Intuitive interface designed for both beginners and experts. No learning curve required.
+                </CardDescription>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
@@ -194,54 +191,47 @@ const Index = () => {
       <section className="py-20 px-4 bg-gray-50">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12">
-            Entre em Contato
+            Get In Touch
           </h2>
           <div className="grid md:grid-cols-2 gap-12">
             <div>
-              <h3 className="text-2xl font-semibold mb-6">Inicie uma Conversa</h3>
+              <h3 className="text-2xl font-semibold mb-6">Let's Start a Conversation</h3>
               <p className="text-gray-600 mb-8">
-                Tem dúvidas sobre nossa plataforma de análise de licitações? 
-                Quer ver uma demonstração? Preencha o formulário e nossa equipe 
-                retornará em até 24 horas.
+                Have questions about our services? Want to see a demo? Fill out the form and our team will get back to you within 24 hours.
               </p>
               
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <Mail className="w-5 h-5 text-blue-600" />
-                  <span className="text-gray-600">contato@licitacao-analise.com</span>
+                  <span className="text-gray-600">hello@example.com</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Phone className="w-5 h-5 text-blue-600" />
-                  <span className="text-gray-600">+55 (11) 3456-7890</span>
+                  <span className="text-gray-600">+1 (555) 123-4567</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <MapPin className="w-5 h-5 text-blue-600" />
-                  <span className="text-gray-600">São Paulo, SP - Brasil</span>
+                  <span className="text-gray-600">123 Business St, City, State 12345</span>
                 </div>
-              </div>
-              
-              {/* Security Status */}
-              <div className="mt-8">
-                <SecurityStatus showRateLimit={true} showCSRF={true} />
               </div>
             </div>
 
             <Card>
               <CardHeader>
-                <CardTitle>Envie sua mensagem</CardTitle>
+                <CardTitle>Send us a message</CardTitle>
                 <CardDescription>
-                  Gostaríamos de saber mais sobre suas necessidades
+                  We'd love to hear from you
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Nome</Label>
+                    <Label htmlFor="name">Name</Label>
                     <Input
                       id="name"
                       name="name"
                       type="text"
-                      placeholder="Seu nome"
+                      placeholder="Your name"
                       value={formData.name}
                       onChange={handleInputChange}
                       className={errors.name ? "border-red-500" : ""}
@@ -262,7 +252,7 @@ const Index = () => {
                       id="email"
                       name="email"
                       type="email"
-                      placeholder="seu@email.com"
+                      placeholder="your@email.com"
                       value={formData.email}
                       onChange={handleInputChange}
                       className={errors.email ? "border-red-500" : ""}
@@ -278,11 +268,11 @@ const Index = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="message">Mensagem</Label>
+                    <Label htmlFor="message">Message</Label>
                     <Textarea
                       id="message"
                       name="message"
-                      placeholder="Como podemos ajudar com suas análises de licitação..."
+                      placeholder="Tell us how we can help you..."
                       value={formData.message}
                       onChange={handleInputChange}
                       className={errors.message ? "border-red-500" : ""}
@@ -297,16 +287,16 @@ const Index = () => {
                       </p>
                     )}
                     <p className="text-xs text-gray-500">
-                      {formData.message.length}/2000 caracteres
+                      {formData.message.length}/2000 characters
                     </p>
                   </div>
                   
                   <Button 
                     type="submit" 
                     className="w-full" 
-                    disabled={isSubmitting || !canMakeRequest()}
+                    disabled={isSubmitting}
                   >
-                    {isSubmitting ? "Enviando..." : "Enviar Mensagem"}
+                    {isSubmitting ? "Sending..." : "Send Message"}
                   </Button>
                 </form>
               </CardContent>
@@ -318,10 +308,10 @@ const Index = () => {
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12 px-4">
         <div className="max-w-6xl mx-auto text-center">
-          <h3 className="text-2xl font-bold mb-4">Pronto para Otimizar Suas Licitações?</h3>
-          <p className="text-gray-400 mb-6">Junte-se a centenas de empresas que aumentaram seu sucesso</p>
+          <h3 className="text-2xl font-bold mb-4">Ready to Get Started?</h3>
+          <p className="text-gray-400 mb-6">Join thousands of satisfied customers today</p>
           <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
-            Iniciar Teste Gratuito
+            Start Free Trial
           </Button>
         </div>
       </footer>
