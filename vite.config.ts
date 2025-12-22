@@ -18,7 +18,7 @@ export default defineConfig(() => ({
   },
   build: {
     outDir: 'dist',
-    sourcemap: false,
+    sourcemap: true,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -28,8 +28,7 @@ export default defineConfig(() => ({
         }
       }
     },
-    chunkSizeWarningLimit: 1000,
-    target: 'esnext'
+    chunkSizeWarningLimit: 1000
   },
   plugins: [dyadComponentTagger(), react()],
   resolve: {
