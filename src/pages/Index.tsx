@@ -142,61 +142,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 px-4 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-12">
-            Por Que Escolher Nossa Plataforma
-          </h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            <Card className="text-center p-6 border-0 shadow-lg">
-              <CardHeader>
-                <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                  <Search className="w-6 h-6 text-blue-600" />
-                </div>
-                <CardTitle>Análise Inteligente</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-gray-600">
-                  Processamento automatizado de editais e documentos com IA para identificar 
-                  requisitos críticos e garantir conformidade total.
-                </CardDescription>
-              </CardContent>
-            </Card>
-
-            <Card className="text-center p-6 border-0 shadow-lg">
-              <CardHeader>
-                <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                  <Shield className="w-6 h-6 text-green-600" />
-                </div>
-                <CardTitle>Segurança & Conformidade</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-gray-600">
-                  Seus dados de licitação protegidos com segurança empresarial, 
-                  headers CSP avançados e processamento seguro de API.
-                </CardDescription>
-              </CardContent>
-            </Card>
-
-            <Card className="text-center p-6 border-0 shadow-lg">
-              <CardHeader>
-                <div className="mx-auto w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-4">
-                  <TrendingUp className="w-6 h-6 text-purple-600" />
-                </div>
-                <CardTitle>Maximize Suas Chances</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-gray-600">
-                  Interface intuitiva projetada para gestores e equipes. 
-                  Aumente sua taxa de sucesso em licitações com análises precisas.
-                </CardDescription>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
       {/* Additional Features */}
       <section className="py-20 px-4 bg-gray-50">
         <div className="max-w-6xl mx-auto">
