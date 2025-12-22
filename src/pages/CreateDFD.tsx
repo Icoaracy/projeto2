@@ -4,20 +4,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Save, FileText, Download } from "lucide-react";
+import { ArrowLeft, Save, FileText, Download, Wand2, Check, X, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import jsPDF from "jspdf";
-import { AITextImprover } from "@/components/ai-text-improver";
+import { apiClient } from "@/lib/api";
+import { useSecurity } from "@/hooks/use-security";
 
 const CreateDFD = () => {
   const navigate = useNavigate();
+  const { canMakeRequest } = useSecurity();
+  
   const [formData, setFormData] = useState({
     // 1. Informações Básicas
     numeroProcesso: "",
     
     // 2. Descrição da Necessidade
     objetoAquisicao: "",
+    objetoAquisicaoOriginal: "",
+    objetoAquisicaoMelhorado: "",
+    showObjetoAquisicaoAI: false,
     origemNecessidade: "",
     localAplicacao: "",
     fundamentoLegal: "",
@@ -114,13 +120,47 @@ const CreateDFD = () => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isImprovingText, setIsImprovingText] = useState(false);
+
+  // Format process number: xxxxx.xxxxxx/xxxx-xx
+  const formatProcessNumber = (value: string): string => {
+    // Remove all non-numeric characters
+    const numbersOnly = value.replace(/\D/g, '').slice(0, 17);
+    
+    if (numbersOnly.length <= 5) {
+      return numbersOnly;
+    } else if (numbersOnly.length <= 11) {
+      return `${numbersOnly.slice(0, 5)}.${numbersOnly.slice(5)}`;
+    } else if (numbersOnly.length <= 15) {
+      return `${numbersOnly.slice(0, 5)}.${numbersOnly.slice(5, 11)}/${numbersOnly.slice(11)}`;
+    } else {
+      return `${numbersOnly.slice(0, 5)}.${numbersOnly.slice(5, 11)}/${numbersOnly.slice(11, 15)}-${numbersOnly.slice(15, 17)}`;
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    if (name === 'numeroProcesso') {
+      // Store only numbers, but display formatted
+      const numbersOnly = value.replace(/\D/g, '').slice(0, 17);
+      setFormData(prev => ({
+        ...prev,
+        [name]: numbersOnly
+      }));
+    } else if (name === 'objetoAquisicao') {
+      setFormData(prev => ({
+        ...prev,
+        objetoAquisicao: value,
+        objetoAquisicaoOriginal: value,
+        showObjetoAquisicaoAI: false
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleNestedInputChange = (section: string, field: string, value: string) => {
@@ -130,6 +170,58 @@ const CreateDFD = () => {
         ...(prev as any)[section],
         [field]: value
       }
+    }));
+  };
+
+  const improveTextWithAI = async () => {
+    if (!formData.objetoAquisicao.trim()) {
+      showError("Por favor, escreva o objeto da aquisição antes de solicitar melhoria.");
+      return;
+    }
+
+    if (!canMakeRequest()) {
+      showError("Limite de requisições excedido. Por favor, aguarde antes de tentar novamente.");
+      return;
+    }
+
+    setIsImprovingText(true);
+
+    try {
+      const response = await apiClient.post('/api/improve-text', {
+        text: formData.objetoAquisicao,
+        context: "licitação e aquisição de bens e serviços"
+      });
+
+      if (response.success && response.improvedText) {
+        setFormData(prev => ({
+          ...prev,
+          objetoAquisicaoMelhorado: response.improvedText,
+          showObjetoAquisicaoAI: true
+        }));
+        showSuccess("Texto melhorado com sucesso!");
+      } else {
+        showError(response.error || "Falha ao melhorar texto");
+      }
+    } catch (error) {
+      showError("Erro ao processar solicitação. Tente novamente.");
+    } finally {
+      setIsImprovingText(false);
+    }
+  };
+
+  const acceptImprovedText = () => {
+    setFormData(prev => ({
+      ...prev,
+      objetoAquisicao: prev.objetoAquisicaoMelhorado,
+      showObjetoAquisicaoAI: false
+    }));
+    showSuccess("Texto atualizado!");
+  };
+
+  const rejectImprovedText = () => {
+    setFormData(prev => ({
+      ...prev,
+      showObjetoAquisicaoAI: false
     }));
   };
 
@@ -153,7 +245,7 @@ const CreateDFD = () => {
 
     // 1. Informações Básicas
     addSection("1. INFORMAÇÕES BÁSICAS", [
-      { label: "1.1. Número do Processo Administrativo:", value: formData.numeroProcesso }
+      { label: "1.1. Número do Processo Administrativo:", value: formatProcessNumber(formData.numeroProcesso) }
     ]);
 
     // 2. Descrição da Necessidade
@@ -314,7 +406,7 @@ const CreateDFD = () => {
       });
 
       // Generate filename
-      const processNumber = formData.numeroProcesso.replace(/[^a-zA-Z0-9]/g, '_');
+      const processNumber = formatProcessNumber(formData.numeroProcesso).replace(/[^a-zA-Z0-9]/g, '_');
       const filename = `DFD_${processNumber}.pdf`;
 
       // Save PDF
@@ -372,11 +464,15 @@ const CreateDFD = () => {
                   <Input
                     id="numeroProcesso"
                     name="numeroProcesso"
-                    value={formData.numeroProcesso}
+                    value={formatProcessNumber(formData.numeroProcesso)}
                     onChange={handleInputChange}
-                    placeholder="Informe o número do processo"
+                    placeholder="xxxxx.xxxxxx/xxxx-xx"
+                    maxLength={21} // 17 digits + 4 formatting characters
                     required
                   />
+                  <p className="text-xs text-gray-500">
+                    Formato: xxxxx.xxxxxx/xxxx-xx (17 dígitos numéricos)
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -387,18 +483,86 @@ const CreateDFD = () => {
                 <CardTitle className="text-xl">2. Descrição da Necessidade</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Item 2.1 com AI Text Improver */}
                 <div className="space-y-2">
                   <Label htmlFor="objetoAquisicao">2.1. Objeto da Aquisição</Label>
-                  <AITextImprover
+                  <Textarea
+                    id="objetoAquisicao"
+                    name="objetoAquisicao"
                     value={formData.objetoAquisicao}
-                    onChange={(value) => handleInputChange({ target: { name: 'objetoAquisicao', value } } as any)}
-                    placeholder="Descreva o objeto da aquisição. A IA ajudará a melhorar seu texto!"
-                    label="Objeto da Aquisição"
-                    context="licitação e aquisição de bens e serviços"
-                    maxLength={2000}
+                    onChange={handleInputChange}
+                    placeholder="Descreva o objeto da aquisição. A IA pode ajudar a melhorar seu texto!"
+                    rows={3}
+                    required
                   />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={improveTextWithAI}
+                      disabled={!formData.objetoAquisicao.trim() || isImprovingText || !canMakeRequest()}
+                      className="flex items-center gap-2"
+                    >
+                      <Wand2 className="w-4 h-4" />
+                      {isImprovingText ? "Melhorando..." : "Melhorar com IA"}
+                    </Button>
+                    <span className="text-xs text-gray-500">
+                      Use a IA para melhorar a clareza e formalidade do texto
+                    </span>
+                  </div>
                 </div>
+
+                {/* AI Improvement Section */}
+                {formData.showObjetoAquisicaoAI && formData.objetoAquisicaoMelhorado && (
+                  <Card className="border-green-200 bg-green-50">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Wand2 className="w-5 h-5 text-green-600" />
+                          <CardTitle className="text-lg text-green-800">Texto Melhorado pela IA</CardTitle>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={rejectImprovedText}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="bg-white p-4 rounded-lg border border-green-200">
+                        <pre className="whitespace-pre-wrap text-sm text-gray-800 font-sans">
+                          {formData.objetoAquisicaoMelhorado}
+                        </pre>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          onClick={acceptImprovedText}
+                          className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                        >
+                          <Check className="w-4 h-4" />
+                          Aceitar
+                        </Button>
+                        
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={improveTextWithAI}
+                          disabled={isImprovingText}
+                          className="flex items-center gap-2"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                          Tentar Novamente
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
                 
                 <div className="space-y-2">
                   <Label htmlFor="origemNecessidade">2.2. Origem da Necessidade</Label>
