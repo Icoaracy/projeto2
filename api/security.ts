@@ -38,14 +38,93 @@ export function validateEmail(email: string): boolean {
   return emailRegex.test(email) && email.length <= 254;
 }
 
-// Enhanced rate limiting with persistent storage using Vercel KV
+// In-memory fallback rate limiter for when KV is unavailable
+class InMemoryRateLimiter {
+  private static instance: InMemoryRateLimiter;
+  private requests: Map<string, { timestamps: number[]; lastAccess: number }> = new Map();
+  private cleanupInterval: NodeJS.Timeout;
+
+  private constructor() {
+    // Clean up old entries every 5 minutes
+    this.cleanupInterval = setInterval(() => {
+      this.cleanup();
+    }, 5 * 60 * 1000);
+  }
+
+  static getInstance(): InMemoryRateLimiter {
+    if (!InMemoryRateLimiter.instance) {
+      InMemoryRateLimiter.instance = new InMemoryRateLimiter();
+    }
+    return InMemoryRateLimiter.instance;
+  }
+
+  private cleanup(): void {
+    const now = Date.now();
+    const oneHourAgo = now - 60 * 60 * 1000; // Clean entries older than 1 hour
+    
+    for (const [key, data] of this.requests.entries()) {
+      if (data.lastAccess < oneHourAgo) {
+        this.requests.delete(key);
+      }
+    }
+  }
+
+  isAllowed(identifier: string, maxRequests: number, windowMs: number): boolean {
+    const now = Date.now();
+    const windowStart = now - windowMs;
+    
+    let data = this.requests.get(identifier);
+    if (!data) {
+      data = { timestamps: [], lastAccess: now };
+      this.requests.set(identifier, data);
+    }
+    
+    // Update last access time
+    data.lastAccess = now;
+    
+    // Filter out old requests outside the window
+    data.timestamps = data.timestamps.filter(timestamp => timestamp > windowStart);
+    
+    // Check if limit exceeded
+    if (data.timestamps.length >= maxRequests) {
+      return false;
+    }
+    
+    // Add current request timestamp
+    data.timestamps.push(now);
+    
+    return true;
+  }
+
+  getStatus(identifier: string, maxRequests: number, windowMs: number): { remaining: number; resetTime: number } {
+    const now = Date.now();
+    const windowStart = now - windowMs;
+    
+    const data = this.requests.get(identifier);
+    if (!data) {
+      return { remaining: maxRequests, resetTime: now + windowMs };
+    }
+    
+    const validTimestamps = data.timestamps.filter(timestamp => timestamp > windowStart);
+    const remaining = Math.max(0, maxRequests - validTimestamps.length);
+    const resetTime = validTimestamps.length > 0 
+      ? Math.min(...validTimestamps) + windowMs 
+      : now + windowMs;
+
+    return { remaining, resetTime };
+  }
+}
+
+// Enhanced rate limiting with persistent storage using Vercel KV and local fallback
 export class RateLimiter {
   private readonly maxRequests: number;
   private readonly windowMs: number;
+  private readonly fallbackLimiter: InMemoryRateLimiter;
 
   constructor(maxRequests: number = 5, windowMs: number = 60000) {
     this.maxRequests = maxRequests;
     this.windowMs = windowMs;
+    this.fallbackLimiter = InMemoryRateLimiter.getInstance();
   }
 
   // Validate and sanitize IP address
@@ -68,11 +147,13 @@ export class RateLimiter {
 
   async isAllowed(identifier: string): Promise<boolean> {
     const sanitizedIP = this.sanitizeIP(identifier);
-    const now = Date.now();
-    const key = `rate_limit:${sanitizedIP}`;
-    const windowStart = now - this.windowMs;
-
+    
     try {
+      // Try Vercel KV first
+      const now = Date.now();
+      const key = `rate_limit:${sanitizedIP}`;
+      const windowStart = now - this.windowMs;
+
       // Get existing requests from KV
       const existingData = await kv.get<{ timestamps: number[] }>(key);
       const timestamps = existingData?.timestamps || [];
@@ -93,9 +174,10 @@ export class RateLimiter {
 
       return true;
     } catch (error) {
-      console.error('Rate limiting error:', error);
-      // Fail open - allow request if KV is unavailable
-      return true;
+      console.error('KV rate limiting error, falling back to in-memory:', error);
+      
+      // Fallback to in-memory rate limiter
+      return this.fallbackLimiter.isAllowed(sanitizedIP, this.maxRequests, this.windowMs);
     }
   }
 
@@ -103,10 +185,10 @@ export class RateLimiter {
   async getStatus(identifier: string): Promise<{ remaining: number; resetTime: number }> {
     const sanitizedIP = this.sanitizeIP(identifier);
     const now = Date.now();
-    const key = `rate_limit:${sanitizedIP}`;
     const windowStart = now - this.windowMs;
 
     try {
+      // Try Vercel KV first
       const existingData = await kv.get<{ timestamps: number[] }>(key);
       const timestamps = existingData?.timestamps || [];
       const validTimestamps = timestamps.filter(timestamp => timestamp > windowStart);
@@ -118,8 +200,10 @@ export class RateLimiter {
 
       return { remaining, resetTime };
     } catch (error) {
-      console.error('Rate limit status error:', error);
-      return { remaining: this.maxRequests, resetTime: now + this.windowMs };
+      console.error('KV rate limit status error, falling back to in-memory:', error);
+      
+      // Fallback to in-memory rate limiter
+      return this.fallbackLimiter.getStatus(sanitizedIP, this.maxRequests, this.windowMs);
     }
   }
 }
