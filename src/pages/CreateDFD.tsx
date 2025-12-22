@@ -367,13 +367,15 @@ const CreateDFD = () => {
 
       // Preparar conteúdo para o PDF
       const pdfContent = {
-        'Dados Gerais': `
-          Número do Processo: ${formatProcessNumber(formData.numeroProcesso)}
-          Objeto da Aquisição: ${formData.objetoAquisicao}
-          Origem da Necessidade: ${formData.origemNecessidade}
-         
+        'Dados Gerais': `Número do Processo: ${formatProcessNumber(formData.numeroProcesso)}\nObjeto da Aquisição: ${formData.objetoAquisicao}\nOrigem da Necessidade: ${formData.origemNecessidade}\nLocal de Aplicação: ${formData.localAplicacao}\nFundamento Legal: ${formData.fundamentoLegal}\nÁrea Requisitante: ${formData.areaRequisitante}\nRequisitante: ${formData.requisitante}`,
+        'Descrição da Solução': formData.descricaoSolucao,
+        'Estimativa de Preços': `Valor Total Estimado: ${formData.valorTotalEstimacao}\nMétodo de Levantamento: ${formData.metodoLevantamentoQuantidades}\nMemória de Cálculo: ${formData.memoriaCalculo}`,
+        'Justificativa da Contratação': formData.justificativaVi
 
-<dyad-write path="src/pages/CreateDFD.tsx" description="Completando o arquivo CreateDFD.tsx que estava cortado">
+
+Vou corrigir o erro de sintaxe no arquivo CreateDFD.tsx. O problema está na string template mal formada na função handleGeneratePDF.
+
+<dyad-write path="src/pages/CreateDFD.tsx" description="Corrigindo erro de sintaxe na string template">
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -743,21 +745,9 @@ const CreateDFD = () => {
 
       // Preparar conteúdo para o PDF
       const pdfContent = {
-        'Dados Gerais': `
-          Número do Processo: ${formatProcessNumber(formData.numeroProcesso)}
-          Objeto da Aquisição: ${formData.objetoAquisicao}
-          Origem da Necessidade: ${formData.origemNecessidade}
-          Local de Aplicação: ${formData.localAplicacao}
-          Fundamento Legal: ${formData.fundamentoLegal}
-          Área Requisitante: ${formData.areaRequisitante}
-          Requisitante: ${formData.requisitante}
-        `,
+        'Dados Gerais': `Número do Processo: ${formatProcessNumber(formData.numeroProcesso)}\nObjeto da Aquisição: ${formData.objetoAquisicao}\nOrigem da Necessidade: ${formData.origemNecessidade}\nLocal de Aplicação: ${formData.localAplicacao}\nFundamento Legal: ${formData.fundamentoLegal}\nÁrea Requisitante: ${formData.areaRequisitante}\nRequisitante: ${formData.requisitante}`,
         'Descrição da Solução': formData.descricaoSolucao,
-        'Estimativa de Preços': `
-          Valor Total Estimado: ${formData.valorTotalEstimacao}
-          Método de Levantamento: ${formData.metodoLevantamentoQuantidades}
-          Memória de Cálculo: ${formData.memoriaCalculo}
-        `,
+        'Estimativa de Preços': `Valor Total Estimado: ${formData.valorTotalEstimacao}\nMétodo de Levantamento: ${formData.metodoLevantamentoQuantidades}\nMemória de Cálculo: ${formData.memoriaCalculo}`,
         'Justificativa da Contratação': formData.justificativaViabilidade
       };
 
