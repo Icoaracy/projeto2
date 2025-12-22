@@ -50,61 +50,6 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    // Validate
-
-<dyad-write path="api/improve-text.ts" description="Creating improve-text endpoint with proper validation">
-import { RateLimiter, CSRFProtection, validateRequestBody, SCHEMAS, SECURITY_MESSAGES, addRandomJitter } from './security';
-
-// Initialize rate limiter: 10 requests per minute per IP (more permissive for AI features)
-const rateLimiter = new RateLimiter(10, 60000);
-
-// Apply schema validation middleware
-const validateImproveTextData = validateRequestBody(SCHEMAS.improveText);
-
-export default async function handler(req: any, res: any) {
-  // Set comprehensive security headers
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  
-  // Only allow POST method
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: SECURITY_MESSAGES.GENERIC_ERROR });
-  }
-
-  const startTime = Date.now();
-  
-  try {
-    // Get client IP for rate limiting
-    const clientIP = req.connection?.remoteAddress || 
-                    req.socket?.remoteAddress || 
-                    req.info?.remoteAddress || 
-                    'unknown';
-
-    // Apply rate limiting
-    const isAllowed = await rateLimiter.isAllowed(clientIP);
-    if (!isAllowed) {
-      const status = await rateLimiter.getStatus(clientIP);
-      
-      const processingTime = addRandomJitter(500);
-      const elapsed = Date.now() - startTime;
-      const remainingDelay = Math.max(0, processingTime - elapsed);
-      
-      res.setHeader('X-RateLimit-Limit', '10');
-      res.setHeader('X-RateLimit-Remaining', status.remaining.toString());
-      res.setHeader('X-RateLimit-Reset', new Date(status.resetTime).toISOString());
-      
-      setTimeout(() => {
-        res.status(429).json({ 
-          error: SECURITY_MESSAGES.RATE_LIMIT,
-          retryAfter: Math.ceil((status.resetTime - Date.now()) / 1000)
-        });
-      }, remainingDelay);
-      return;
-    }
-
     // Validate CSRF token
     const csrfToken = req.headers['x-csrf-token'];
     if (!csrfToken || !CSRFProtection.validateToken(csrfToken)) {
@@ -130,13 +75,30 @@ export default async function handler(req: any, res: any) {
         hasContext: !!context
       });
       
-      // Here you would typically:
-      // 1. Call an AI service (OpenAI, etc.) with proper API key management
-      // 2. Process the text improvement
-      // 3. Return the improved text
+      // Simple text improvement as placeholder
+      // In production, you would integrate with an AI service like OpenAI
+      let improvedText = text;
       
-      // For now, return a simple improvement as placeholder
-      const improvedText = `Texto melhorado: ${text.replace(/\b(e|o|a|os|as)\b/gi, (match) => match.toUpperCase())}`;
+      // Basic text improvements
+      improvedText = improvedText
+        .replace(/\b(e|o|a|os|as)\b/gi, (match) => match.toUpperCase()) // Capitalize articles
+        .replace(/\b(que|por|para|com|sem|sobre)\b/gi, (match) => match.toLowerCase()) // Lowercase prepositions
+        .replace(/([.!?])\s*([a-z])/g, (match, punct, letter) => `${punct} ${letter.toUpperCase()}`) // Fix sentence case
+        .replace(/\s+/g, ' ') // Normalize whitespace
+        .trim();
+      
+      // Add context-specific improvements
+      if (context && context.includes('licitação')) {
+        improvedText = improvedText
+          .replace(/\bcontratacao\b/gi, 'contratação')
+          .replace(/\baquisicao\b/gi, 'aquisição')
+          .replace(/\bobjeto\b/gi, 'objeto');
+      }
+      
+      // If no improvements were made, add a small enhancement
+      if (improvedText === text) {
+        improvedText = text.charAt(0).toUpperCase() + text.slice(1);
+      }
       
       const processingTime = addRandomJitter(500);
       const elapsed = Date.now() - startTime;
