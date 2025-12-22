@@ -1,19 +1,34 @@
-import { randomBytes } from 'crypto';
+import DOMPurify from 'dompurify';
+import CryptoJS from 'crypto-js';
 
 // Generate a cryptographically secure nonce for CSP
 export function generateNonce(): string {
-  return randomBytes(16).toString('base64');
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-// Sanitize HTML content to prevent XSS
+// Enhanced HTML sanitization using DOMPurify
 export function sanitizeHtml(input: string): string {
+  if (typeof window !== 'undefined') {
+    return DOMPurify.sanitize(input, {
+      ALLOWED_TAGS: [],
+      ALLOWED_ATTR: [],
+      KEEP_CONTENT: true
+    });
+  }
+  
+  // Server-side fallback sanitization
   return input
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;');
+    .replace(/\//g, '&#x2F;')
+    .replace(/javascript:/gi, '')
+    .replace(/data:/gi, '')
+    .replace(/vbscript:/gi, '');
 }
 
 // Validate email format with stricter regex
@@ -22,9 +37,9 @@ export function validateEmail(email: string): boolean {
   return emailRegex.test(email) && email.length <= 254;
 }
 
-// Rate limiting implementation
+// Enhanced rate limiting with IP validation
 export class RateLimiter {
-  private requests: Map<string, number[]> = new Map();
+  private requests: Map<string, { count: number; resetTime: number }> = new Map();
   private readonly maxRequests: number;
   private readonly windowMs: number;
 
@@ -33,38 +48,116 @@ export class RateLimiter {
     this.windowMs = windowMs;
   }
 
-  isAllowed(identifier: string): boolean {
-    const now = Date.now();
-    const requests = this.requests.get(identifier) || [];
+  // Validate and sanitize IP address
+  private sanitizeIP(ip: string): string {
+    if (!ip || ip === 'unknown') return 'unknown';
     
-    // Remove old requests outside the window
-    const validRequests = requests.filter(time => now - time < this.windowMs);
+    // Remove potential injection attempts
+    const cleanIP = ip.replace(/[^\d.:]/g, '').trim();
     
-    if (validRequests.length >= this.maxRequests) {
-      return false;
+    // Basic IP validation
+    const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
+    const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
+    
+    if (ipv4Regex.test(cleanIP) || ipv6Regex.test(cleanIP)) {
+      return cleanIP;
     }
     
-    validRequests.push(now);
-    this.requests.set(identifier, validRequests);
+    return 'invalid';
+  }
+
+  isAllowed(identifier: string): boolean {
+    const sanitizedIP = this.sanitizeIP(identifier);
+    const now = Date.now();
+    const key = sanitizedIP;
+
+    const existing = this.requests.get(key);
+    
+    if (!existing || now > existing.resetTime) {
+      this.requests.set(key, {
+        count: 1,
+        resetTime: now + this.windowMs
+      });
+      return true;
+    }
+
+    if (existing.count >= this.maxRequests) {
+      return false;
+    }
+
+    existing.count++;
     return true;
   }
 }
 
-// CSRF token generation and validation
+// Enhanced CSRF protection using signed tokens
 export class CSRFProtection {
-  private static tokens: Set<string> = new Set();
-  
+  private static readonly SECRET_KEY = process.env.CSRF_SECRET || 'default-secret-key-change-in-production';
+  private static readonly TOKEN_EXPIRY = 3600000; // 1 hour
+
   static generateToken(): string {
-    const token = randomBytes(32).toString('hex');
-    this.tokens.add(token);
-    // Clean up old tokens periodically
-    if (this.tokens.size > 1000) {
-      this.tokens.clear();
-    }
-    return token;
+    const timestamp = Date.now();
+    const random = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    
+    const payload = `${timestamp}.${random}`;
+    const signature = CryptoJS.HmacSHA256(payload, this.SECRET_KEY).toString();
+    
+    return `${payload}.${signature}`;
   }
-  
+
   static validateToken(token: string): boolean {
-    return this.tokens.has(token);
+    if (!token || typeof token !== 'string') {
+      return false;
+    }
+
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return false;
+    }
+
+    const [timestampStr, random, signature] = parts;
+    
+    // Check timestamp
+    const timestamp = parseInt(timestampStr, 10);
+    if (isNaN(timestamp) || Date.now() - timestamp > this.TOKEN_EXPIRY) {
+      return false;
+    }
+
+    // Verify signature
+    const payload = `${timestampStr}.${random}`;
+    const expectedSignature = CryptoJS.HmacSHA256(payload, this.SECRET_KEY).toString();
+    
+    return CryptoJS.HmacSHA256(payload, this.SECRET_KEY).toString() === signature;
   }
+}
+
+// Generic error messages to prevent information disclosure
+export const SECURITY_MESSAGES = {
+  GENERIC_ERROR: 'Request failed. Please try again.',
+  RATE_LIMIT: 'Too many requests. Please try again later.',
+  INVALID_TOKEN: 'Invalid request. Please refresh the page.',
+  VALIDATION_ERROR: 'Invalid input provided.',
+  SERVER_ERROR: 'An error occurred. Please try again later.'
+} as const;
+
+// Constant-time comparison to prevent timing attacks
+export function constantTimeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+
+  return result === 0;
+}
+
+// Add random jitter to prevent timing analysis
+export function addRandomJitter(baseDelay: number = 500): number {
+  const jitter = Math.random() * 200; // 0-200ms jitter
+  return baseDelay + jitter;
 }

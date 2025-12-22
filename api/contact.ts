@@ -1,4 +1,4 @@
-import { RateLimiter, CSRFProtection, sanitizeHtml, validateEmail } from '../src/lib/security';
+import { RateLimiter, CSRFProtection, sanitizeHtml, validateEmail, SECURITY_MESSAGES, addRandomJitter } from '../src/lib/security';
 
 // Initialize rate limiter: 5 requests per minute per IP
 const rateLimiter = new RateLimiter(5, 60000);
@@ -13,44 +13,74 @@ export default function handler(req: any, res: any) {
   
   // Only allow POST method
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: SECURITY_MESSAGES.GENERIC_ERROR });
   }
 
+  const startTime = Date.now();
+  
   try {
-    // Get client IP for rate limiting
-    const clientIP = req.headers['x-forwarded-for'] || 
-                    req.headers['x-real-ip'] || 
-                    req.connection?.remoteAddress || 
+    // Get client IP for rate limiting (use most reliable source)
+    const clientIP = req.connection?.remoteAddress || 
+                    req.socket?.remoteAddress || 
+                    req.info?.remoteAddress || 
                     'unknown';
 
     // Apply rate limiting
     if (!rateLimiter.isAllowed(clientIP)) {
-      return res.status(429).json({ 
-        error: 'Too many requests. Please try again later.' 
-      });
+      // Add consistent timing for rate limit response
+      const processingTime = addRandomJitter(500);
+      const elapsed = Date.now() - startTime;
+      const remainingDelay = Math.max(0, processingTime - elapsed);
+      
+      setTimeout(() => {
+        res.status(429).json({ error: SECURITY_MESSAGES.RATE_LIMIT });
+      }, remainingDelay);
+      return;
     }
 
-    // Validate CSRF token if provided
+    // Validate CSRF token
     const csrfToken = req.headers['x-csrf-token'];
-    if (csrfToken && !CSRFProtection.validateToken(csrfToken)) {
-      return res.status(403).json({ error: 'Invalid CSRF token' });
+    if (!csrfToken || !CSRFProtection.validateToken(csrfToken)) {
+      // Add consistent timing for invalid CSRF response
+      const processingTime = addRandomJitter(500);
+      const elapsed = Date.now() - startTime;
+      const remainingDelay = Math.max(0, processingTime - elapsed);
+      
+      setTimeout(() => {
+        res.status(403).json({ error: SECURITY_MESSAGES.INVALID_TOKEN });
+      }, remainingDelay);
+      return;
     }
 
     const { name, email, message } = req.body;
 
     // Comprehensive input validation
     if (!name || !email || !message) {
-      return res.status(400).json({ error: 'All fields are required' });
+      // Add consistent timing for validation error
+      const processingTime = addRandomJitter(500);
+      const elapsed = Date.now() - startTime;
+      const remainingDelay = Math.max(0, processingTime - elapsed);
+      
+      setTimeout(() => {
+        res.status(400).json({ error: SECURITY_MESSAGES.VALIDATION_ERROR });
+      }, remainingDelay);
+      return;
     }
 
     // Validate field lengths
     if (name.length > 100 || email.length > 254 || message.length > 2000) {
-      return res.status(400).json({ error: 'Input exceeds maximum length' });
+      setTimeout(() => {
+        res.status(400).json({ error: SECURITY_MESSAGES.VALIDATION_ERROR });
+      }, addRandomJitter(500));
+      return;
     }
 
     // Strict email validation
     if (!validateEmail(email)) {
-      return res.status(400).json({ error: 'Invalid email address format' });
+      setTimeout(() => {
+        res.status(400).json({ error: SECURITY_MESSAGES.VALIDATION_ERROR });
+      }, addRandomJitter(500));
+      return;
     }
 
     // Sanitize all inputs to prevent XSS
@@ -59,16 +89,19 @@ export default function handler(req: any, res: any) {
 
     // Additional validation after sanitization
     if (sanitizedName.length === 0 || sanitizedMessage.length === 0) {
-      return res.status(400).json({ error: 'Invalid input data' });
+      setTimeout(() => {
+        res.status(400).json({ error: SECURITY_MESSAGES.VALIDATION_ERROR });
+      }, addRandomJitter(500));
+      return;
     }
 
-    // Log security-relevant information
+    // Log security-relevant information (without sensitive data)
     console.log('Contact form submission:', { 
       timestamp: new Date().toISOString(),
       ip: clientIP,
-      userAgent: req.headers['user-agent'],
-      name: sanitizedName, 
-      email, 
+      userAgent: req.headers['user-agent'] ? '[REDACTED]' : 'none',
+      nameLength: sanitizedName.length, 
+      emailDomain: email.split('@')[1] || 'invalid',
       messageLength: sanitizedMessage.length
     });
     
@@ -77,23 +110,33 @@ export default function handler(req: any, res: any) {
     // 2. Save to database with proper escaping
     // 3. Send to CRM, etc.
     
-    // Simulate processing time to prevent timing attacks
+    // Add consistent timing to prevent timing attacks
+    const processingTime = addRandomJitter(500);
+    const elapsed = Date.now() - startTime;
+    const remainingDelay = Math.max(0, processingTime - elapsed);
+    
     setTimeout(() => {
       res.status(200).json({ 
         success: true, 
         message: 'Thank you for your message! We will get back to you soon.' 
       });
-    }, 500);
+    }, remainingDelay);
 
   } catch (error) {
     console.error('Contact form error:', {
       timestamp: new Date().toISOString(),
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
+      error: error instanceof Error ? error.message : 'Unknown error'
     });
     
-    res.status(500).json({ 
-      error: 'An unexpected error occurred. Please try again later.' 
-    });
+    // Add consistent timing for server errors
+    const processingTime = addRandomJitter(500);
+    const elapsed = Date.now() - startTime;
+    const remainingDelay = Math.max(0, processingTime - elapsed);
+    
+    setTimeout(() => {
+      res.status(500).json({ 
+        error: SECURITY_MESSAGES.SERVER_ERROR 
+      });
+    }, remainingDelay);
   }
 }

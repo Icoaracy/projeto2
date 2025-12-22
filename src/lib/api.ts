@@ -17,11 +17,32 @@ class ApiClient {
     this.baseUrl = baseUrl;
   }
 
-  // Generate CSRF token for state-changing requests
-  private generateCSRFToken(): string {
-    return Array.from(crypto.getRandomValues(new Uint8Array(32)))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
+  // Get CSRF token from server
+  private async getCSRFToken(): Promise<string> {
+    if (this.csrfToken) {
+      return this.csrfToken;
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/api/csrf-token`, {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get CSRF token');
+      }
+
+      const data = await response.json();
+      this.csrfToken = data.token;
+      return this.csrfToken;
+    } catch (error) {
+      console.error('CSRF token error:', error);
+      throw new Error('Request failed. Please refresh the page.');
+    }
   }
 
   private async request<T>(
@@ -42,10 +63,8 @@ class ApiClient {
 
       // Add CSRF token for state-changing operations
       if (options.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method)) {
-        if (!this.csrfToken) {
-          this.csrfToken = this.generateCSRFToken();
-        }
-        headers['X-CSRF-Token'] = this.csrfToken;
+        const token = await this.getCSRFToken();
+        headers['X-CSRF-Token'] = token;
       }
 
       const response = await fetch(url, {
@@ -63,15 +82,24 @@ class ApiClient {
       if (contentType && contentType.includes('application/json')) {
         data = await response.json();
       } else {
-        data = { message: response.statusText };
+        data = { message: 'Request processed' };
       }
 
       if (!response.ok) {
-        // Handle rate limiting specifically
+        // Return generic error messages to prevent information disclosure
+        let errorMessage = 'Request failed. Please try again.';
+        
         if (response.status === 429) {
-          throw new Error('Rate limit exceeded. Please wait before trying again.');
+          errorMessage = 'Too many requests. Please try again later.';
+        } else if (response.status === 403) {
+          errorMessage = 'Invalid request. Please refresh the page.';
+        } else if (response.status === 400) {
+          errorMessage = 'Invalid input provided.';
+        } else if (response.status >= 500) {
+          errorMessage = 'An error occurred. Please try again later.';
         }
-        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        
+        throw new Error(errorMessage);
       }
 
       return data;
@@ -81,6 +109,8 @@ class ApiClient {
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString()
       });
+      
+      // Re-throw the error with the generic message
       throw error;
     }
   }
