@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Save, FileText, Download, Wand2, Check, X, RefreshCw } from "lucide-react";
+import { ArrowLeft, Save, FileText, Download, Wand2, Check, X, RefreshCw, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import jsPDF from "jspdf";
@@ -121,6 +121,40 @@ const CreateDFD = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isImprovingText, setIsImprovingText] = useState(false);
+  const [processNumberError, setProcessNumberError] = useState("");
+
+  // Function to validate process number according to the specified algorithm
+  const validateProcessNumber = (numbers: string): boolean => {
+    if (numbers.length !== 17) {
+      return false;
+    }
+
+    // Convert string to array of numbers
+    const digits = numbers.split('').map(d => parseInt(d, 10));
+    
+    // The penultimate digit is at position 15 (0-indexed: 14)
+    const penultimateDigit = digits[14];
+    
+    // Calculate the first verification digit (position 16, 0-indexed: 15)
+    // We need to use the first 15 digits (positions 0-14)
+    const first15Digits = digits.slice(0, 15);
+    
+    // Calculate weighted sum
+    let weightedSum = 0;
+    for (let i = 0; i < 15; i++) {
+      // The weight starts at 2 for the first verification digit (position 15 from right)
+      // and increases by 1 for each position
+      const weight = 2 + i;
+      weightedSum += first15Digits[i] * weight;
+    }
+    
+    // Calculate verification digit
+    const remainder = weightedSum % 11;
+    const calculatedDigit = 11 - remainder;
+    
+    // The calculated digit should match the penultimate digit
+    return calculatedDigit === penultimateDigit;
+  };
 
   // Format process number: xxxxx.xxxxxx/xxxx-xx
   const formatProcessNumber = (value: string): string => {
@@ -148,6 +182,18 @@ const CreateDFD = () => {
         ...prev,
         [name]: numbersOnly
       }));
+      
+      // Clear error when user starts typing
+      if (processNumberError) {
+        setProcessNumberError("");
+      }
+      
+      // Validate if we have 17 digits
+      if (numbersOnly.length === 17) {
+        if (!validateProcessNumber(numbersOnly)) {
+          setProcessNumberError("Numero de Processo está errado, revise o número de processo informado");
+        }
+      }
     } else if (name === 'objetoAquisicao') {
       setFormData(prev => ({
         ...prev,
@@ -375,6 +421,16 @@ const CreateDFD = () => {
       return;
     }
 
+    if (formData.numeroProcesso.length !== 17) {
+      showError("O número do processo deve ter exatamente 17 dígitos.");
+      return;
+    }
+
+    if (!validateProcessNumber(formData.numeroProcesso)) {
+      showError("Numero de Processo está errado, revise o número de processo informado");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -468,11 +524,18 @@ const CreateDFD = () => {
                     onChange={handleInputChange}
                     placeholder="xxxxx.xxxxxx/xxxx-xx"
                     maxLength={21} // 17 digits + 4 formatting characters
+                    className={processNumberError ? "border-red-500" : ""}
                     required
                   />
                   <p className="text-xs text-gray-500">
                     Formato: xxxxx.xxxxxx/xxxx-xx (17 dígitos numéricos)
                   </p>
+                  {processNumberError && (
+                    <div className="flex items-center gap-2 text-red-600 text-sm">
+                      <AlertTriangle className="w-4 h-4" />
+                      {processNumberError}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -1431,7 +1494,7 @@ const CreateDFD = () => {
                 type="submit" 
                 size="lg" 
                 className="text-lg px-8"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !!processNumberError || formData.numeroProcesso.length !== 17}
               >
                 <Download className="w-5 h-5 mr-2" />
                 {isSubmitting ? "Gerando PDF..." : "Salvar DFD"}
