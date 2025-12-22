@@ -132,14 +132,14 @@ const CreateDFD = () => {
     // Convert string to array of numbers
     const digits = numbers.split('').map(d => parseInt(d, 10));
     
-    // The penultimate digit is at position 15 (0-indexed: 14)
+    // 1º DÍGITO VERIFICADOR (penúltima posição - posição 16 da direita para esquerda)
     const penultimateDigit = digits[14];
     
     // Calculate first verification digit (position 16, 0-indexed: 15)
     // We need to use the first 15 digits (positions 0-14)
     const first15Digits = digits.slice(0, 15);
     
-    // Calculate weighted sum - CORRECTED: weights in reverse order
+    // Calculate weighted sum - pesos na ordem inversa (2 a 16 da direita para esquerda)
     let weightedSum = 0;
     for (let i = 0; i < 15; i++) {
       // The weight starts at 2 for the RIGHTMOST digit (position 14 from left, 0 from right)
@@ -153,7 +153,429 @@ const CreateDFD = () => {
     const calculatedDigit = 11 - remainder;
     
     // The calculated digit should match penultimate digit
-    return calculatedDigit === penultimateDigit;
+    if (calculatedDigit !== penultimateDigit) {
+      return false;
+    }
+    
+    // 2º DÍGITO VERIFICADOR (última posição - posição 17 da direita para esquerda)
+    const lastDigit = digits[16];
+    
+    // Calculate second verification digit using all 16 digits (positions 0-15)
+    const first16Digits = digits.slice(0, 16);
+    
+    // Calculate weighted sum - pesos de 2 a 17 da direita para esquerda
+    let weightedSum2 = 0;
+    for (let i = 0; i < 16; i++) {
+      // The weight starts at 2 for the RIGHTMOST digit (position 15 from left, 0 from right)
+      // and increases by 1 moving LEFT
+      const weight = 2 + (15 - i);
+      weightedSum2 += first16Digits[i] * weight;
+    }
+    
+    // Calculate second verification digit
+    const remainder2 = weightedSum2 % 11;
+    const calculatedDigit2 = 11 - remainder2;
+    
+    // The calculated digit should match last digit
+    return calculatedDigit2 === lastDigit;
+  };
+
+  // Format process number: xxxxx.xxxxxx/xxxx-xx
+  const formatProcessNumber = (value: string): string => {
+    // Remove all non-numeric characters
+    const numbersOnly = value.replace(/\D/g, '').slice(0, 17);
+    
+    if (numbersOnly.length <= 5) {
+      return numbersOnly;
+    } else if (numbersOnly.length <= 11) {
+      return `${numbersOnly.slice(0, 5)}.${numbersOnly.slice(5)}`;
+    } else if (numbersOnly.length <= 15) {
+      return `${numbersOnly.slice(0, 5)}.${numbersOnly.slice(5, 11)}/${numbersOnly.slice(11)}`;
+    } else {
+      return `${numbersOnly.slice(0, 5)}.${numbersOnly.slice(5, 11)}/${numbersOnly.slice(11, 15)}-${numbersOnly.slice(15, 17)}`;
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    
+    if (name === 'numeroProcesso') {
+      // Store only numbers, but display formatted
+      const numbersOnly = value.replace(/\D/g, '').slice(0, 17);
+      setFormData(prev => ({
+        ...prev,
+        [name]: numbersOnly
+      }));
+      
+      // Clear error when user starts typing
+      if (processNumberError) {
+        setProcessNumberError("");
+      }
+      
+      // Validate if we have 17 digits
+      if (numbersOnly.length === 17) {
+        if (!validateProcessNumber(numbersOnly)) {
+          setProcessNumberError("Numero de Processo está errado, revise o número de processo informado");
+        }
+      }
+    } else if (name === 'objetoAquisicao') {
+      setFormData(prev => ({
+        ...prev,
+        objetoAquisicao: value,
+        objetoAquisicaoOriginal: value,
+        showObjetoAquisicaoAI: false
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
+
+  const handleNestedInputChange = (section: string, field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [section]: {
+        ...(prev as any)[section],
+        [field]: value
+      }
+    }));
+  };
+
+  const improveTextWithAI = async () => {
+    if (!formData.objetoAquisicao.trim()) {
+      showError("Por favor, escreva o objeto da aquisição antes de solicitar melhoria.");
+      return;
+    }
+
+    if (!canMakeRequest()) {
+      showError("Limite de requisições excedido. Por favor, aguarde antes de tentar novamente.");
+      return;
+    }
+
+    setIsImprovingText(true);
+
+    try {
+      const response = await apiClient.post('/api/improve-text', {
+        text: formData.objetoAquisicao,
+        context: "licitação e aquisição de bens e serviços"
+      });
+
+      if (response.success && response.improvedText) {
+        setFormData(prev => ({
+          ...prev,
+          objetoAquisicaoMelhorado: response.improvedText,
+          showObjetoAquisicaoAI: true
+        }));
+        showSuccess("Texto melhorado com sucesso!");
+      } else {
+        showError(response.error || "Falha ao melhorar texto");
+      }
+    } catch (error) {
+      showError("Erro ao processar solicitação. Tente novamente.");
+    } finally {
+      setIsImprovingText(false);
+    }
+  };
+
+  const acceptImprovedText = () => {
+    setFormData(prev => ({
+      ...prev,
+      objetoAquisicao: prev.objetoAquisicaoMelhorado,
+      showObjetoAquisicaoAI: false
+    }));
+    showSuccess("Texto atualizado!");
+  };
+
+  const rejectImprovedText = () => {
+    setFormData(prev => ({
+      ...prev,
+      showObjetoAquisicaoAI: false
+    }));
+  };
+
+  const generatePDFContent = () => {
+    let content = "";
+    
+    // Helper function to add section
+    const addSection = (title: string, fields: Array<{label: string, value: string}>) => {
+      content += `${title}\n`;
+      content += "=".repeat(title.length) + "\n\n";
+      
+      fields.forEach(field => {
+        if (field.value && field.value.trim()) {
+          content += `${field.label}\n`;
+          content += `${field.value}\n\n`;
+        }
+      });
+      
+      content += "\n";
+    };
+
+    // 1. Informações Básicas
+    addSection("1. INFORMAÇÕES BÁSICAS", [
+      { label: "1.1. Número do Processo Administrativo:", value: formatProcessNumber(formData.numeroProcesso) }
+    ]);
+
+    // 2. Descrição da Necessidade
+    addSection("2. DESCRIÇÃO DA NECESSIDADE", [
+      { label: "2.1. Objeto da Aquisição:", value: formData.objetoAquisicao },
+      { label: "2.2. Origem da Necessidade:", value: formData.origemNecessidade },
+      { label: "2.3. Local de Aplicação:", value: formData.localAplicacao },
+      { label: "2.4. Fundamento Legal:", value: formData.fundamentoLegal }
+    ]);
+
+    // 3. Área Requisitante
+    addSection("3. ÁREA REQUISITANTE", [
+      { label: "3.1. Área Requisitante:", value: formData.areaRequisitante },
+      { label: "3.2. Requisitante:", value: formData.requisitante },
+      { label: "3.3. Cargo:", value: formData.cargo },
+      { label: "3.4. Fundamento Legal:", value: formData.fundamentoLegalArea }
+    ]);
+
+    // 4. Descrição dos Requisitos da Contratação
+    addSection("4. DESCRIÇÃO DOS REQUISITOS DA CONTRATAÇÃO", [
+      { label: "4.1. Da opção pela execução Indireta:", value: formData.opcaoExecucaoIndireta },
+      { label: "4.2. Da opção por regime de execução contínua ou por escopo:", value: formData.opcaoRegimeExecucao },
+      { label: "4.3. Da essencialidade do objeto:", value: formData.essencialidadeObjeto },
+      { label: "4.4.1. Gerais:", value: formData.requisitosGerais },
+      { label: "4.4.2.1. Os níveis de qualidade do serviço ou produto:", value: formData.requisitosEspecificos.niveisQualidade },
+      { label: "4.4.2.2. A Legislação pertinente:", value: formData.requisitosEspecificos.legislacaoPertinente },
+      { label: "4.4.2.3. As normas técnicas:", value: formData.requisitosEspecificos.normasTecnicas },
+      { label: "4.4.2.4. Os requisitos temporais:", value: formData.requisitosEspecificos.requisitosTemporais },
+      { label: "4.4.2.5. Os requisitos de garantia e assistência técnica:", value: formData.requisitosEspecificos.requisitosGarantia },
+      { label: "4.4.2.6. A necessidade de contratação do fornecimento associado ao serviço:", value: formData.requisitosEspecificos.fornecimentoAssociado },
+      { label: "4.5. Critérios e práticas de sustentabilidade:", value: formData.criteriosSustentabilidade },
+      { label: "4.6. Avaliação da duração inicial do contrato:", value: formData.avaliacaoDuracaoContrato },
+      { label: "4.7. Necessidade de transição contratual:", value: formData.necessidadeTransicao },
+      { label: "4.8. Levantamento de Riscos associados a Contratação:", value: formData.levantamentoRiscos }
+    ]);
+
+    // 5. Levantamento de Mercado
+    addSection("5. LEVANTAMENTO DE MERCADO", [
+      { label: "5.1.1. Descrição - Alternativa 01:", value: formData.alternativa1.descricao },
+      { label: "5.1.2. Pontos Positivos - Alternativa 01:", value: formData.alternativa1.pontosPositivos },
+      { label: "5.1.3. Pontos Negativos - Alternativa 01:", value: formData.alternativa1.pontosNegativos },
+      { label: "5.2.1. Descrição - Alternativa 02:", value: formData.alternativa2.descricao },
+      { label: "5.2.2. Pontos Positivos - Alternativa 02:", value: formData.alternativa2.pontosPositivos },
+      { label: "5.2.3. Pontos Negativos - Alternativa 02:", value: formData.alternativa2.pontosNegativos },
+      { label: "5.3.1. Descrição - Alternativa 03:", value: formData.alternativa3.descricao },
+      { label: "5.3.2. Pontos Positivos - Alternativa 03:", value: formData.alternativa3.pontosPositivos },
+      { label: "5.3.3. Pontos Negativos - Alternativa 03:", value: formData.alternativa3.pontosNegativos },
+      { label: "5.4. Dos Impactos Previstos:", value: formData.impactosPrevistos },
+      { label: "5.5. Da consulta ou audiência pública:", value: formData.consultaPublica },
+      { label: "5.6. Justificativa da alternativa escolhida:", value: formData.justificativaAlternativa },
+      { label: "5.7. Enquadramento como bem ou serviço comum:", value: formData.enquadramentoBemServico }
+    ]);
+
+    // 6. Descrição da solução como um todo
+    addSection("6. DESCRIÇÃO DA SOLUÇÃO COMO UM TODO", [
+      { label: "Descrição completa da solução:", value: formData.descricaoSolucao }
+    ]);
+
+    // 7. Estimativa das Quantidades
+    addSection("7. ESTIMATIVA DAS QUANTIDADES A SEREM CONTRATADAS", [
+      { label: "7.1. Método de levantamento das quantidades:", value: formData.metodoLevantamentoQuantidades },
+      { label: "7.2. Resultado do Levantamento:", value: formData.resultadoLevantamento },
+      { label: "7.3. Compatibilidade entre quantidades e demanda:", value: formData.compatibilidadeQuantidades },
+      { label: "7.4. Memória de Cálculo:", value: formData.memoriaCalculo }
+    ]);
+
+    // 8. Estimativa do Valor
+    addSection("8. ESTIMATIVA DO VALOR DA CONTRATAÇÃO", [
+      { label: "8.1. Valor Total da Estimativa:", value: formData.valorTotalEstimativa },
+      { label: "8.2. Métodos de levantamento de preços usados:", value: formData.metodosLevantamentoPrecos },
+      { label: "8.3. Os preços estão dentro da margem de mercado?", value: formData.precosDentroMercado }
+    ]);
+
+    // 9. Justificativa Parcelamento
+    addSection("9. JUSTIFICATIVA PARA O PARCELAMENTO OU NÃO DA SOLUÇÃO", [
+      { label: "9.1. É tecnicamente viável dividir a solução?", value: formData.viabilidadeTecnicaDivisao },
+      { label: "9.2. É economicamente viável dividir a solução?", value: formData.viabilidadeEconomicaDivisao },
+      { label: "9.3. Não há perda de escala ao dividir a solução?", value: formData.perdaEscalaDivisao },
+      { label: "9.4. Há o melhor aproveitamento do mercado e ampliação da competitividade ao dividir a solução?", value: formData.aproveitamentoMercadoDivisao },
+      { label: "9.5. Conclusão sobre o parcelamento ou não da solução:", value: formData.conclus<dyad-write path="src/pages/CreateDFD.tsx" description="Adicionada validação do segundo dígito verificador (último dígito) com pesos de 2 a 17">
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Save, FileText, Download, Wand2, Check, X, RefreshCw, AlertTriangle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { showSuccess, showError } from "@/utils/toast";
+import jsPDF from "jspdf";
+import { apiClient } from "@/lib/api";
+import { useSecurity } from "@/hooks/use-security";
+
+const CreateDFD = () => {
+  const navigate = useNavigate();
+  const { canMakeRequest } = useSecurity();
+  
+  const [formData, setFormData] = useState({
+    // 1. Informações Básicas
+    numeroProcesso: "",
+    
+    // 2. Descrição da Necessidade
+    objetoAquisicao: "",
+    objetoAquisicaoOriginal: "",
+    objetoAquisicaoMelhorado: "",
+    showObjetoAquisicaoAI: false,
+    origemNecessidade: "",
+    localAplicacao: "",
+    fundamentoLegal: "",
+    
+    // 3. Área Requisitante
+    areaRequisitante: "",
+    requisitante: "",
+    cargo: "",
+    fundamentoLegalArea: "",
+    
+    // 4. Descrição dos Requisitos da Contratação
+    opcaoExecucaoIndireta: "",
+    opcaoRegimeExecucao: "",
+    essencialidadeObjeto: "",
+    requisitosGerais: "",
+    requisitosEspecificos: {
+      niveisQualidade: "",
+      legislacaoPertinente: "",
+      normasTecnicas: "",
+      requisitosTemporais: "",
+      requisitosGarantia: "",
+      fornecimentoAssociado: ""
+    },
+    criteriosSustentabilidade: "",
+    avaliacaoDuracaoContrato: "",
+    necessidadeTransicao: "",
+    levantamentoRiscos: "",
+    
+    // 5. Levantamento de Mercado
+    alternativa1: {
+      descricao: "",
+      pontosPositivos: "",
+      pontosNegativos: ""
+    },
+    alternativa2: {
+      descricao: "",
+      pontosPositivos: "",
+      pontosNegativos: ""
+    },
+    alternativa3: {
+      descricao: "",
+      pontosPositivos: "",
+      pontosNegativos: ""
+    },
+    impactosPrevistos: "",
+    consultaPublica: "",
+    justificativaAlternativa: "",
+    enquadramentoBemServico: "",
+    
+    // 6. Descrição da solução como um todo
+    descricaoSolucao: "",
+    
+    // 7. Estimativa das Quantidades
+    metodoLevantamentoQuantidades: "",
+    resultadoLevantamento: "",
+    compatibilidadeQuantidades: "",
+    memoriaCalculo: "",
+    
+    // 8. Estimativa do Valor
+    valorTotalEstimativa: "",
+    metodosLevantamentoPrecos: "",
+    precosDentroMercado: "",
+    
+    // 9. Justificativa Parcelamento
+    viabilidadeTecnicaDivisao: "",
+    viabilidadeEconomicaDivisao: "",
+    perdaEscalaDivisao: "",
+    aproveitamentoMercadoDivisao: "",
+    conclusaoParcelamento: "",
+    
+    // 10. Contratações Correlatas
+    contratacoesCorrelatas: "",
+    
+    // 11. Alinhamento Planejamento
+    perspectivaProcessos: "",
+    identificadorDespesa: "",
+    alinhamentoPDL: "",
+    alinhamentoNormas: "",
+    
+    // 12. Benefícios
+    beneficiosContratacao: "",
+    
+    // 13. Providências
+    providenciasAdotar: "",
+    
+    // 14. Impactos Ambientais
+    impactosAmbientais: "",
+    
+    // 15. Declaração de Viabilidade
+    justificativaViabilidade: "",
+    
+    // 16. Equipe de Planejamento
+    equipePlanejamento: ""
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isImprovingText, setIsImprovingText] = useState(false);
+  const [processNumberError, setProcessNumberError] = useState("");
+
+  // Function to validate process number according to specified algorithm
+  const validateProcessNumber = (numbers: string): boolean => {
+    if (numbers.length !== 17) {
+      return false;
+    }
+
+    // Convert string to array of numbers
+    const digits = numbers.split('').map(d => parseInt(d, 10));
+    
+    // 1º DÍGITO VERIFICADOR (penúltima posição - posição 16 da direita para esquerda)
+    const penultimateDigit = digits[14];
+    
+    // Calculate first verification digit (position 16, 0-indexed: 15)
+    // We need to use first 15 digits (positions 0-14)
+    const first15Digits = digits.slice(0, 15);
+    
+    // Calculate weighted sum - pesos na ordem inversa (2 a 16 da direita para esquerda)
+    let weightedSum = 0;
+    for (let i = 0; i < 15; i++) {
+      // The weight starts at 2 for the RIGHTMOST digit (position 14 from left, 0 from right)
+      // and increases by 1 moving LEFT
+      const weight = 2 + (14 - i);
+      weightedSum += first15Digits[i] * weight;
+    }
+    
+    // Calculate verification digit
+    const remainder = weightedSum % 11;
+    const calculatedDigit = 11 - remainder;
+    
+    // The calculated digit should match penultimate digit
+    if (calculatedDigit !== penultimateDigit) {
+      return false;
+    }
+    
+    // 2º DÍGITO VERIFICADOR (última posição - posição 17 da direita para esquerda)
+    const lastDigit = digits[16];
+    
+    // Calculate second verification digit using all 16 digits (positions 0-15)
+    const first16Digits = digits.slice(0, 16);
+    
+    // Calculate weighted sum - pesos de 2 a 17 da direita para esquerda
+    let weightedSum2 = 0;
+    for (let i = 0; i < 16; i++) {
+      // The weight starts at 2 for the RIGHTMOST digit (position 15 from left, 0 from right)
+      // and increases by 1 moving LEFT
+      const weight = 2 + (15 - i);
+      weightedSum2 += first16Digits[i] * weight;
+    }
+    
+    // Calculate second verification digit
+    const remainder2 = weightedSum2 % 11;
+    const calculatedDigit2 = 11 - remainder2;
+    
+    // The calculated digit should match last digit
+    return calculatedDigit2 === lastDigit;
   };
 
   // Format process number: xxxxx.xxxxxx/xxxx-xx
