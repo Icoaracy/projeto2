@@ -4,9 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Save, FileText } from "lucide-react";
+import { ArrowLeft, Save, FileText, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
+import jsPDF from "jspdf";
 
 const CreateDFD = () => {
   const navigate = useNavigate();
@@ -131,21 +132,197 @@ const CreateDFD = () => {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const generatePDFContent = () => {
+    let content = "";
+    
+    // Helper function to add section
+    const addSection = (title: string, fields: Array<{label: string, value: string}>) => {
+      content += `${title}\n`;
+      content += "=".repeat(title.length) + "\n\n";
+      
+      fields.forEach(field => {
+        if (field.value && field.value.trim()) {
+          content += `${field.label}\n`;
+          content += `${field.value}\n\n`;
+        }
+      });
+      
+      content += "\n";
+    };
+
+    // 1. Informações Básicas
+    addSection("1. INFORMAÇÕES BÁSICAS", [
+      { label: "1.1. Número do Processo Administrativo:", value: formData.numeroProcesso }
+    ]);
+
+    // 2. Descrição da Necessidade
+    addSection("2. DESCRIÇÃO DA NECESSIDADE", [
+      { label: "2.1. Objeto da Aquisição:", value: formData.objetoAquisicao },
+      { label: "2.2. Origem da Necessidade:", value: formData.origemNecessidade },
+      { label: "2.3. Local de Aplicação:", value: formData.localAplicacao },
+      { label: "2.4. Fundamento Legal:", value: formData.fundamentoLegal }
+    ]);
+
+    // 3. Área Requisitante
+    addSection("3. ÁREA REQUISITANTE", [
+      { label: "3.1. Área Requisitante:", value: formData.areaRequisitante },
+      { label: "3.2. Requisitante:", value: formData.requisitante },
+      { label: "3.3. Cargo:", value: formData.cargo },
+      { label: "3.4. Fundamento Legal:", value: formData.fundamentoLegalArea }
+    ]);
+
+    // 4. Descrição dos Requisitos da Contratação
+    addSection("4. DESCRIÇÃO DOS REQUISITOS DA CONTRATAÇÃO", [
+      { label: "4.1. Da opção pela execução Indireta:", value: formData.opcaoExecucaoIndireta },
+      { label: "4.2. Da opção por regime de execução contínua ou por escopo:", value: formData.opcaoRegimeExecucao },
+      { label: "4.3. Da essencialidade do objeto:", value: formData.essencialidadeObjeto },
+      { label: "4.4.1. Gerais:", value: formData.requisitosGerais },
+      { label: "4.4.2.1. Os níveis de qualidade do serviço ou produto:", value: formData.requisitosEspecificos.niveisQualidade },
+      { label: "4.4.2.2. A Legislação pertinente:", value: formData.requisitosEspecificos.legislacaoPertinente },
+      { label: "4.4.2.3. As normas técnicas:", value: formData.requisitosEspecificos.normasTecnicas },
+      { label: "4.4.2.4. Os requisitos temporais:", value: formData.requisitosEspecificos.requisitosTemporais },
+      { label: "4.4.2.5. Os requisitos de garantia e assistência técnica:", value: formData.requisitosEspecificos.requisitosGarantia },
+      { label: "4.4.2.6. A necessidade de contratação do fornecimento associado ao serviço:", value: formData.requisitosEspecificos.fornecimentoAssociado },
+      { label: "4.5. Critérios e práticas de sustentabilidade:", value: formData.criteriosSustentabilidade },
+      { label: "4.6. Avaliação da duração inicial do contrato:", value: formData.avaliacaoDuracaoContrato },
+      { label: "4.7. Necessidade de transição contratual:", value: formData.necessidadeTransicao },
+      { label: "4.8. Levantamento de Riscos associados a Contratação:", value: formData.levantamentoRiscos }
+    ]);
+
+    // 5. Levantamento de Mercado
+    addSection("5. LEVANTAMENTO DE MERCADO", [
+      { label: "5.1.1. Descrição - Alternativa 01:", value: formData.alternativa1.descricao },
+      { label: "5.1.2. Pontos Positivos - Alternativa 01:", value: formData.alternativa1.pontosPositivos },
+      { label: "5.1.3. Pontos Negativos - Alternativa 01:", value: formData.alternativa1.pontosNegativos },
+      { label: "5.2.1. Descrição - Alternativa 02:", value: formData.alternativa2.descricao },
+      { label: "5.2.2. Pontos Positivos - Alternativa 02:", value: formData.alternativa2.pontosPositivos },
+      { label: "5.2.3. Pontos Negativos - Alternativa 02:", value: formData.alternativa2.pontosNegativos },
+      { label: "5.3.1. Descrição - Alternativa 03:", value: formData.alternativa3.descricao },
+      { label: "5.3.2. Pontos Positivos - Alternativa 03:", value: formData.alternativa3.pontosPositivos },
+      { label: "5.3.3. Pontos Negativos - Alternativa 03:", value: formData.alternativa3.pontosNegativos },
+      { label: "5.4. Dos Impactos Previstos:", value: formData.impactosPrevistos },
+      { label: "5.5. Da consulta ou audiência pública:", value: formData.consultaPublica },
+      { label: "5.6. Justificativa da alternativa escolhida:", value: formData.justificativaAlternativa },
+      { label: "5.7. Enquadramento como bem ou serviço comum:", value: formData.enquadramentoBemServico }
+    ]);
+
+    // 6. Descrição da solução como um todo
+    addSection("6. DESCRIÇÃO DA SOLUÇÃO COMO UM TODO", [
+      { label: "Descrição completa da solução:", value: formData.descricaoSolucao }
+    ]);
+
+    // 7. Estimativa das Quantidades
+    addSection("7. ESTIMATIVA DAS QUANTIDADES A SEREM CONTRATADAS", [
+      { label: "7.1. Método de levantamento das quantidades:", value: formData.metodoLevantamentoQuantidades },
+      { label: "7.2. Resultado do Levantamento:", value: formData.resultadoLevantamento },
+      { label: "7.3. Compatibilidade entre quantidades e demanda:", value: formData.compatibilidadeQuantidades },
+      { label: "7.4. Memória de Cálculo:", value: formData.memoriaCalculo }
+    ]);
+
+    // 8. Estimativa do Valor
+    addSection("8. ESTIMATIVA DO VALOR DA CONTRATAÇÃO", [
+      { label: "8.1. Valor Total da Estimativa:", value: formData.valorTotalEstimativa },
+      { label: "8.2. Métodos de levantamento de preços usados:", value: formData.metodosLevantamentoPrecos },
+      { label: "8.3. Os preços estão dentro da margem de mercado?", value: formData.precosDentroMercado }
+    ]);
+
+    // 9. Justificativa Parcelamento
+    addSection("9. JUSTIFICATIVA PARA O PARCELAMENTO OU NÃO DA SOLUÇÃO", [
+      { label: "9.1. É tecnicamente viável dividir a solução?", value: formData.viabilidadeTecnicaDivisao },
+      { label: "9.2. É economicamente viável dividir a solução?", value: formData.viabilidadeEconomicaDivisao },
+      { label: "9.3. Não há perda de escala ao dividir a solução?", value: formData.perdaEscalaDivisao },
+      { label: "9.4. Há o melhor aproveitamento do mercado e ampliação da competitividade ao dividir a solução?", value: formData.aproveitamentoMercadoDivisao },
+      { label: "9.5. Conclusão sobre o parcelamento ou não da solução:", value: formData.conclusaoParcelamento }
+    ]);
+
+    // 10. Contratações Correlatas
+    addSection("10. CONTRATAÇÕES CORRELATAS E/OU INTERDEPENDENTES", [
+      { label: "Descrição das contratações correlatas e/ou interdependentes:", value: formData.contratacoesCorrelatas }
+    ]);
+
+    // 11. Alinhamento Planejamento
+    addSection("11. ALINHAMENTO ENTRE A CONTRATAÇÃO E O PLANEJAMENTO", [
+      { label: "11.1. A qual Perspectiva de Processos a aquisição está alinhada?", value: formData.perspectivaProcessos },
+      { label: "11.2. A qual Identificador de Despesa está vinculada a aquisição?", value: formData.identificadorDespesa },
+      { label: "11.3. Alinhamento ao Plano Diretor de Logística Sustentável:", value: formData.alinhamentoPDL },
+      { label: "11.4. Alinhamento as Normas Internas e de Órgãos Externos:", value: formData.alinhamentoNormas }
+    ]);
+
+    // 12. Benefícios
+    addSection("12. BENEFÍCIOS A SEREM ALCANÇADOS COM A CONTRATAÇÃO", [
+      { label: "Descrição dos benefícios esperados:", value: formData.beneficiosContratacao }
+    ]);
+
+    // 13. Providências
+    addSection("13. PROVIDÊNCIAS A SEREM ADOTADAS", [
+      { label: "Descrição das providências necessárias:", value: formData.providenciasAdotar }
+    ]);
+
+    // 14. Impactos Ambientais
+    addSection("14. POSSÍVEIS IMPACTOS AMBIENTAIS", [
+      { label: "Descrição dos possíveis impactos ambientais:", value: formData.impactosAmbientais }
+    ]);
+
+    // 15. Declaração de Viabilidade
+    addSection("15. DECLARAÇÃO DE VIABILIDADE", [
+      { label: "15.1. Justificativa da Viabilidade:", value: formData.justificativaViabilidade }
+    ]);
+
+    // 16. Equipe de Planejamento
+    addSection("16. EQUIPE DE PLANEJAMENTO", [
+      { label: "Descrição da equipe responsável pelo planejamento:", value: formData.equipePlanejamento }
+    ]);
+
+    return content;
+  };
+
+  const saveAsPDF = async () => {
+    if (!formData.numeroProcesso.trim()) {
+      showError("Por favor, informe o número do processo antes de salvar.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // TODO: Implement API call to save DFD
-      console.log("DFD Data:", formData);
-      showSuccess("DFD salvo com sucesso!");
+      // Generate PDF content
+      const content = generatePDFContent();
       
-      // Navigate back to create artifact page
-      setTimeout(() => {
-        navigate("/create-artifact");
-      }, 1500);
+      // Create PDF
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Set font
+      pdf.setFont("helvetica");
+      pdf.setFontSize(10);
+
+      // Add content to PDF
+      const lines = pdf.splitTextToSize(content, 180);
+      let y = 20;
+      
+      lines.forEach((line: string) => {
+        if (y > 270) {
+          pdf.addPage();
+          y = 20;
+        }
+        pdf.text(line, 15, y);
+        y += 5;
+      });
+
+      // Generate filename
+      const processNumber = formData.numeroProcesso.replace(/[^a-zA-Z0-9]/g, '_');
+      const filename = `DFD_${processNumber}.pdf`;
+
+      // Save PDF
+      pdf.save(filename);
+      
+      showSuccess(`PDF "${filename}" salvo com sucesso!`);
     } catch (error) {
-      showError("Erro ao salvar DFD. Tente novamente.");
+      console.error('Error generating PDF:', error);
+      showError("Erro ao gerar PDF. Tente novamente.");
     } finally {
       setIsSubmitting(false);
     }
@@ -182,7 +359,7 @@ const CreateDFD = () => {
       {/* Form */}
       <section className="py-8 px-4">
         <div className="max-w-4xl mx-auto">
-          <form onSubmit={handleSubmit} className="space-y-8">
+          <form onSubmit={(e) => { e.preventDefault(); saveAsPDF(); }} className="space-y-8">
             {/* 1. Informações Básicas */}
             <Card>
               <CardHeader>
@@ -1091,8 +1268,8 @@ const CreateDFD = () => {
                 className="text-lg px-8"
                 disabled={isSubmitting}
               >
-                <Save className="w-5 h-5 mr-2" />
-                {isSubmitting ? "Salvando..." : "Salvar DFD"}
+                <Download className="w-5 h-5 mr-2" />
+                {isSubmitting ? "Gerando PDF..." : "Salvar DFD"}
               </Button>
             </div>
           </form>
