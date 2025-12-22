@@ -370,384 +370,6 @@ const CreateDFD = () => {
         'Dados Gerais': `Número do Processo: ${formatProcessNumber(formData.numeroProcesso)}\nObjeto da Aquisição: ${formData.objetoAquisicao}\nOrigem da Necessidade: ${formData.origemNecessidade}\nLocal de Aplicação: ${formData.localAplicacao}\nFundamento Legal: ${formData.fundamentoLegal}\nÁrea Requisitante: ${formData.areaRequisitante}\nRequisitante: ${formData.requisitante}`,
         'Descrição da Solução': formData.descricaoSolucao,
         'Estimativa de Preços': `Valor Total Estimado: ${formData.valorTotalEstimacao}\nMétodo de Levantamento: ${formData.metodoLevantamentoQuantidades}\nMemória de Cálculo: ${formData.memoriaCalculo}`,
-        'Justificativa da Contratação': formData.justificativaVi
-
-
-Vou corrigir o erro de sintaxe no arquivo CreateDFD.tsx. O problema está na string template mal formada na função handleGeneratePDF.
-
-<dyad-write path="src/pages/CreateDFD.tsx" description="Corrigindo erro de sintaxe na string template">
-import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  Save, 
-  FileText, 
-  Download, 
-  Upload, 
-  Check, 
-  AlertTriangle, 
-  Info,
-  Zap,
-  Shield,
-  FileJson,
-  Keyboard,
-  Eye,
-  Copy,
-  Database,
-  Clock,
-  Users,
-  TrendingUp,
-  ArrowRight,
-  Star,
-  Mail,
-  Phone,
-  MapPin,
-  History
-} from "lucide-react";
-import { showSuccess, showError, showInfo } from "@/utils/toast";
-import { useAutoSave } from "@/hooks/use-auto-save";
-import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
-import { useSecurity } from "@/hooks/use-security";
-import { FormProgress } from "@/components/FormProgress";
-import { FormValidationSummary } from "@/components/FormValidationSummary";
-import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
-import { FormTemplates } from "@/components/FormTemplates";
-import { DataManager } from "@/components/DataManager";
-import { validateForm, getFieldValidationIssues } from "@/lib/form-validation";
-import { generateAdvancedPDF } from "@/lib/pdf-generator";
-import { apiClient } from "@/lib/api";
-
-interface FormData {
-  // Dados Gerais
-  numeroProcesso: string;
-  objetoAquisicao: string;
-  origemNecessidade: string;
-  localAplicacao: string;
-  fundamentoLegal: string;
-  areaRequisitante: string;
-  requisitante: string;
-  
-  // Descrição da Solução
-  descricaoSolucao: string;
-  opcaoExecucaoIndireta: string;
-  opcaoRegimeExecucao: string;
-  essencialidadeObjeto: string;
-  requisitosGerais: string;
-  requisitosEspecificos: {
-    niveisQualidade: string;
-    legislacaoPertinente: string;
-    normasTecnicas: string;
-    requisitosTemporais: string;
-    requisitosGarantia: string;
-    fornecimentoAssociado: string;
-  };
-  criteriosSustentabilidade: string;
-  avaliacaoDuracaoContrato: string;
-  necessidadeTransicao: string;
-  levantamentoRiscos: string;
-  
-  // Levantamento de Mercado
-  alternativa1: {
-    descricao: string;
-    pontosPositivos: string;
-    pontosNegativos: string;
-  };
-  alternativa2: {
-    descricao: string;
-    pontosPositivos: string;
-    pontosNegativos: string;
-  };
-  alternativa3: {
-    descricao: string;
-    pontosPositivos: string;
-    pontosNegativos: string;
-  };
-  impactosPrevistos: string;
-  consultaPublica: string;
-  justificativaAlternativa: string;
-  enquadramentoBemServico: string;
-  
-  // Estimativa de Preços
-  metodoLevantamentoQuantidades: string;
-  resultadoLevantamento: string;
-  compatibilidadeQuantidades: string;
-  memoriaCalculo: string;
-  valorTotalEstimacao: string;
-  metodosLevantamentoPrecos: string;
-  precosDentroMercado: string;
-  
-  // Parcelamento
-  viabilidadeTecnicaDivisao: string;
-  viabilidadeEconomicaDivisao: string;
-  perdaEscalaDivisao: string;
-  aproveitamentoMercadoDivisao: string;
-  conclusaoParcelamento: string;
-  
-  // Contratações Correlatas
-  contratacoesCorrelatas: string;
-  
-  // Alinhamento Planejamento
-  perspectivaProcessos: string;
-  identificadorDespesa: string;
-  alinhamentoPDL: string;
-  alinhamentoNormas: string;
-  
-  // Benefícios e Providências
-  beneficiosContratacao: string;
-  providenciasAdotar: string;
-  impactosAmbientais: string;
-  justificativaViabilidade: string;
-  equipePlanejamento: string;
-}
-
-const initialFormData: FormData = {
-  numeroProcesso: "",
-  objetoAquisicao: "",
-  origemNecessidade: "",
-  localAplicacao: "",
-  fundamentoLegal: "",
-  areaRequisitante: "",
-  requisitante: "",
-  descricaoSolucao: "",
-  opcaoExecucaoIndireta: "",
-  opcaoRegimeExecucao: "",
-  essencialidadeObjeto: "",
-  requisitosGerais: "",
-  requisitosEspecificos: {
-    niveisQualidade: "",
-    legislacaoPertinente: "",
-    normasTecnicas: "",
-    requisitosTemporais: "",
-    requisitosGarantia: "",
-    fornecimentoAssociado: ""
-  },
-  criteriosSustentabilidade: "",
-  avaliacaoDuracaoContrato: "",
-  necessidadeTransicao: "",
-  levantamentoRiscos: "",
-  alternativa1: {
-    descricao: "",
-    pontosPositivos: "",
-    pontosNegativos: ""
-  },
-  alternativa2: {
-    descricao: "",
-    pontosPositivos: "",
-    pontosNegativos: ""
-  },
-  alternativa3: {
-    descricao: "",
-    pontosPositivos: "",
-    pontosNegativos: ""
-  },
-  impactosPrevistos: "",
-  consultaPublica: "",
-  justificativaAlternativa: "",
-  enquadramentoBemServico: "",
-  metodoLevantamentoQuantidades: "",
-  resultadoLevantamento: "",
-  compatibilidadeQuantidades: "",
-  memoriaCalculo: "",
-  valorTotalEstimacao: "",
-  metodosLevantamentoPrecos: "",
-  precosDentroMercado: "",
-  viabilidadeTecnicaDivisao: "",
-  viabilidadeEconomicaDivisao: "",
-  perdaEscalaDivisao: "",
-  aproveitamentoMercadoDivisao: "",
-  conclusaoParcelamento: "",
-  contratacoesCorrelatas: "",
-  perspectivaProcessos: "",
-  identificadorDespesa: "",
-  alinhamentoPDL: "",
-  alinhamentoNormas: "",
-  beneficiosContratacao: "",
-  providenciasAdotar: "",
-  impactosAmbientais: "",
-  justificativaViabilidade: "",
-  equipePlanejamento: ""
-};
-
-// Função de validação de número de processo
-export const validateProcessNumber = (numero: string): boolean => {
-  // Remove caracteres não numéricos
-  const numbersOnly = numero.replace(/\D/g, '');
-  
-  // Verifica se tem 17 dígitos
-  if (numbersOnly.length !== 17) {
-    return false;
-  }
-  
-  // Validação básica do formato XXXXX.YYYYYYYY.ZZZZ.WW
-  const regex = /^(\d{5})\.?(\d{8})\.?(\d{4})\.?(\d{2})$/;
-  const match = numbersOnly.match(regex);
-  
-  if (!match) {
-    return false;
-  }
-  
-  // Validação dos dígitos verificadores (simplificada)
-  const [, ano, numeroUnico, orgao, dv] = match;
-  
-  // Verifica se o ano é razoável (entre 2000 e ano atual + 1)
-  const anoNum = parseInt(ano);
-  const anoAtual = new Date().getFullYear();
-  if (anoNum < 2000 || anoNum > anoAtual + 1) {
-    return false;
-  }
-  
-  // Verificação básica dos dígitos verificadores
-  // Esta é uma validação simplificada - a validação real é mais complexa
-  const dvCalculado = (parseInt(ano) + parseInt(numeroUnico.substring(0, 4))) % 100;
-  return parseInt(dv) === dvCalculado;
-};
-
-// Função para formatar número de processo
-export const formatProcessNumber = (numero: string): string => {
-  const numbersOnly = numero.replace(/\D/g, '');
-  
-  if (numbersOnly.length !== 17) {
-    return numbersOnly;
-  }
-  
-  return `${numbersOnly.substring(0, 5)}.${numbersOnly.substring(5, 13)}.${numbersOnly.substring(13, 17)}.${numbersOnly.substring(17, 19)}`;
-};
-
-const CreateDFD = () => {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState<FormData>(initialFormData);
-  const [currentSection, setCurrentSection] = useState("dados-gerais");
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [validationIssues, setValidationIssues] = useState<any[]>([]);
-  const { canMakeRequest } = useSecurity();
-
-  // Configuração do auto-salvamento
-  const autoSave = useAutoSave(formData, {
-    interval: 30,
-    debounceTime: 2000,
-    storageKey: 'dfd-form-data',
-    onSave: async (data) => {
-      try {
-        // Aqui você poderia salvar no backend
-        console.log('Dados salvos:', data);
-      } catch (error) {
-        console.error('Erro ao salvar:', error);
-      }
-    }
-  });
-
-  // Configuração de atalhos de teclado
-  const shortcuts = [
-    {
-      key: 's',
-      ctrlKey: true,
-      handler: () => autoSave.forceSave(),
-      description: 'Salvar formulário'
-    },
-    {
-      key: 'p',
-      ctrlKey: true,
-      handler: () => handleGeneratePDF(),
-      description: 'Gerar PDF'
-    },
-    {
-      key: 'e',
-      ctrlKey: true,
-      handler: () => handleExportData(),
-      description: 'Exportar dados'
-    },
-    {
-      key: 'i',
-      ctrlKey: true,
-      handler: () => handleImportData(),
-      description: 'Importar dados'
-    }
-  ];
-
-  useKeyboardShortcuts(shortcuts);
-
-  // Carregar dados salvos ao montar o componente
-  useEffect(() => {
-    const savedData = autoSave.loadSavedData();
-    if (savedData) {
-      setFormData(savedData);
-      showInfo('Dados anteriores foram recuperados');
-    }
-  }, [autoSave]);
-
-  // Validação do formulário
-  useEffect(() => {
-    const validationResult = validateForm(formData);
-    const issues = getFieldValidationIssues(validationResult);
-    setValidationIssues(issues);
-  }, [formData]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleNestedInputChange = (parent: string, field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [parent]: {
-        ...(prev as any)[parent],
-        [field]: value
-      }
-    }));
-  };
-
-  const handleProcessNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '');
-    const formattedValue = formatProcessNumber(value);
-    
-    setFormData(prev => ({
-      ...prev,
-      numeroProcesso: formattedValue
-    }));
-
-    // Validação em tempo real
-    if (value.length === 17) {
-      if (validateProcessNumber(value)) {
-        showSuccess('Número de processo válido');
-      } else {
-        showError('Número de processo inválido - verifique os dígitos');
-      }
-    }
-  };
-
-  const handleGeneratePDF = async () => {
-    if (!canMakeRequest()) {
-      showError('Aguarde um momento antes de gerar outro PDF');
-      return;
-    }
-
-    setIsGeneratingPDF(true);
-    
-    try {
-      const validationResult = validateForm(formData);
-      if (!validationResult.isValid) {
-        showError('Corrija os erros do formulário antes de gerar o PDF');
-        return;
-      }
-
-      // Preparar conteúdo para o PDF
-      const pdfContent = {
-        'Dados Gerais': `Número do Processo: ${formatProcessNumber(formData.numeroProcesso)}\nObjeto da Aquisição: ${formData.objetoAquisicao}\nOrigem da Necessidade: ${formData.origemNecessidade}\nLocal de Aplicação: ${formData.localAplicacao}\nFundamento Legal: ${formData.fundamentoLegal}\nÁrea Requisitante: ${formData.areaRequisitante}\nRequisitante: ${formData.requisitante}`,
-        'Descrição da Solução': formData.descricaoSolucao,
-        'Estimativa de Preços': `Valor Total Estimado: ${formData.valorTotalEstimacao}\nMétodo de Levantamento: ${formData.metodoLevantamentoQuantidades}\nMemória de Cálculo: ${formData.memoriaCalculo}`,
         'Justificativa da Contratação': formData.justificativaViabilidade
       };
 
@@ -1167,6 +789,110 @@ const CreateDFD = () => {
                         value={formData.requisitosEspecificos.legislacaoPertinente}
                         onChange={(e) => handleNestedInputChange('requisitosEspecificos', 'legislacaoPertinente', e.target.value)}
                         placeholder="Descreva a legislação pertinente"
+                        rows={3}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="normasTecnicas">4.4.2.3. As Normas técnicas pertinentes</Label>
+                      <Textarea
+                        id="normasTecnicas"
+                        name="normasTecnicas"
+                        value={formData.requisitosEspecificos.normasTecnicas}
+                        onChange={(e) => handleNestedInputChange('requisitosEspecificos', 'normasTecnicas', e.target.value)}
+                        placeholder="Descreva as normas técnicas pertinentes"
+                        rows={3}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="requisitosTemporais">4.4.2.4. Os requisitos temporais</Label>
+                      <Textarea
+                        id="requisitosTemporais"
+                        name="requisitosTemporais"
+                        value={formData.requisitosEspecificos.requisitosTemporais}
+                        onChange={(e) => handleNestedInputChange('requisitosEspecificos', 'requisitosTemporais', e.target.value)}
+                        placeholder="Descreva os requisitos temporais"
+                        rows={3}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="requisitosGarantia">4.4.2.5. Os requisitos de garantia</Label>
+                      <Textarea
+                        id="requisitosGarantia"
+                        name="requisitosGarantia"
+                        value={formData.requisitosEspecificos.requisitosGarantia}
+                        onChange={(e) => handleNestedInputChange('requisitosEspecificos', 'requisitosGarantia', e.target.value)}
+                        placeholder="Descreva os requisitos de garantia"
+                        rows={3}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="fornecimentoAssociado">4.4.2.6. O fornecimento associado</Label>
+                      <Textarea
+                        id="fornecimentoAssociado"
+                        name="fornecimentoAssociado"
+                        value={formData.requisitosEspecificos.fornecimentoAssociado}
+                        onChange={(e) => handleNestedInputChange('requisitosEspecificos', 'fornecimentoAssociado', e.target.value)}
+                        placeholder="Descreva o fornecimento associado"
+                        rows={3}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="criteriosSustentabilidade">4.4.3. Os critérios de sustentabilidade</Label>
+                      <Textarea
+                        id="criteriosSustentabilidade"
+                        name="criteriosSustentabilidade"
+                        value={formData.criteriosSustentabilidade}
+                        onChange={handleInputChange}
+                        placeholder="Descreva os critérios de sustentabilidade"
+                        rows={3}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="avaliacaoDuracaoContrato">4.4.4. A avaliação da duração do contrato</Label>
+                      <Textarea
+                        id="avaliacaoDuracaoContrato"
+                        name="avaliacaoDuracaoContrato"
+                        value={formData.avaliacaoDuracaoContrato}
+                        onChange={handleInputChange}
+                        placeholder="Descreva a avaliação da duração do contrato"
+                        rows={3}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="necessidadeTransicao">4.4.5. A necessidade de transição</Label>
+                      <Textarea
+                        id="necessidadeTransicao"
+                        name="necessidadeTransicao"
+                        value={formData.necessidadeTransicao}
+                        onChange={handleInputChange}
+                        placeholder="Descreva a necessidade de transição"
+                        rows={3}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="levantamentoRiscos">4.4.6. O levantamento de riscos</Label>
+                      <Textarea
+                        id="levantamentoRiscos"
+                        name="levantamentoRiscos"
+                        value={formData.levantamentoRiscos}
+                        onChange={handleInputChange}
+                        placeholder="Descreva o levantamento de riscos"
                         rows={3}
                         required
                       />
