@@ -66,8 +66,12 @@ const CreateArtifact = () => {
   ];
 
   const handleArtifactClick = (artifactId: string) => {
-    // TODO: Navigate to specific artifact creation page
-    console.log(`Creating artifact: ${artifactId}`);
+    if (artifactId === "dfd") {
+      navigate("/create-dfd");
+    } else {
+      // TODO: Navigate to other artifact creation pages when implemented
+      console.log(`Creating artifact: ${artifactId}`);
+    }
   };
 
   return (
