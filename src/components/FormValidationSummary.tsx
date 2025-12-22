@@ -79,7 +79,7 @@ export const FormValidationSummary = ({ issues, onFieldClick }: FormValidationSu
               ${issue.severity === 'error' ? 'text-red-800' :
                 issue.severity === 'warning' ? 'text-yellow-800' :
                 'text-blue-800'
-              }>
+              }`}>
               <strong>{issue.field}:</strong> {issue.message}
             </AlertDescription>
           </Alert>
