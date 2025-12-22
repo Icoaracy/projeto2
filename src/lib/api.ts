@@ -11,9 +11,17 @@ export interface ApiResponse<T = any> {
 
 class ApiClient {
   private baseUrl: string;
+  private csrfToken: string | null = null;
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
+  }
+
+  // Generate CSRF token for state-changing requests
+  private generateCSRFToken(): string {
+    return Array.from(crypto.getRandomValues(new Uint8Array(32)))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
   }
 
   private async request<T>(
@@ -23,15 +31,28 @@ class ApiClient {
     try {
       const url = `${this.baseUrl}${endpoint}`;
       
-      // Add security headers
-      const headers = {
+      // Add comprehensive security headers
+      const headers: HeadersInit = {
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
         ...options.headers,
       };
 
+      // Add CSRF token for state-changing operations
+      if (options.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method)) {
+        if (!this.csrfToken) {
+          this.csrfToken = this.generateCSRFToken();
+        }
+        headers['X-CSRF-Token'] = this.csrfToken;
+      }
+
       const response = await fetch(url, {
         headers,
+        mode: 'same-origin',
+        credentials: 'same-origin',
+        redirect: 'error',
         ...options,
       });
 
@@ -46,12 +67,20 @@ class ApiClient {
       }
 
       if (!response.ok) {
+        // Handle rate limiting specifically
+        if (response.status === 429) {
+          throw new Error('Rate limit exceeded. Please wait before trying again.');
+        }
         throw new Error(data.error || `HTTP error! status: ${response.status}`);
       }
 
       return data;
     } catch (error) {
-      console.error('API request failed:', error);
+      console.error('API request failed:', {
+        endpoint,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
       throw error;
     }
   }
@@ -67,6 +96,11 @@ class ApiClient {
     return this.request<T>(endpoint, {
       method: 'GET',
     });
+  }
+
+  // Method to clear CSRF token if needed
+  clearCSRFToken(): void {
+    this.csrfToken = null;
   }
 }
 

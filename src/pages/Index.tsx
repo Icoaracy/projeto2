@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { showSuccess, showError } from "@/utils/toast";
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import { Mail, Phone, MapPin, Star, Zap, Shield } from "lucide-react";
+import { Mail, Phone, MapPin, Star, Zap, Shield, AlertTriangle } from "lucide-react";
 import { apiClient } from "@/lib/api";
 
 const Index = () => {
@@ -16,9 +16,51 @@ const Index = () => {
     message: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Client-side validation
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    // Name validation
+    if (!formData.name.trim()) {
+      newErrors.name = "Name is required";
+    } else if (formData.name.length > 100) {
+      newErrors.name = "Name must be less than 100 characters";
+    } else if (!/^[a-zA-Z\s'-]+$/.test(formData.name)) {
+      newErrors.name = "Name can only contain letters, spaces, hyphens, and apostrophes";
+    }
+
+    // Email validation
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (formData.email.length > 254) {
+      newErrors.email = "Email is too long";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+
+    // Message validation
+    if (!formData.message.trim()) {
+      newErrors.message = "Message is required";
+    } else if (formData.message.length < 10) {
+      newErrors.message = "Message must be at least 10 characters";
+    } else if (formData.message.length > 2000) {
+      newErrors.message = "Message must be less than 2000 characters";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    
+    // Clear error for this field when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
+    
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -27,20 +69,29 @@ const Index = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form on client side first
+    if (!validateForm()) {
+      showError("Please fix the errors in the form");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // Use secure API endpoint instead of client-side processing
+      // Use secure API endpoint
       const response = await apiClient.post('/api/contact', formData);
       
       if (response.success) {
         showSuccess(response.message || "Form submitted successfully!");
         setFormData({ name: "", email: "", message: "" });
+        setErrors({});
       } else {
         showError(response.error || "Failed to submit form");
       }
     } catch (error) {
-      showError("Failed to submit form. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : "Failed to submit form. Please try again.";
+      showError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -65,6 +116,21 @@ const Index = () => {
             <Button variant="outline" size="lg" className="text-lg px-8">
               Learn More
             </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Security Notice */}
+      <section className="py-8 px-4 bg-blue-50 border-y border-blue-200">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center gap-3 text-blue-800">
+            <Shield className="w-6 h-6" />
+            <div>
+              <h3 className="font-semibold">Enhanced Security Active</h3>
+              <p className="text-sm text-blue-700">
+                This application uses Content Security Policy (CSP), rate limiting, CSRF protection, and input validation to keep your data safe.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -99,7 +165,7 @@ const Index = () => {
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-gray-600">
-                  Your data is protected with enterprise-grade security and server-side API processing. No secrets exposed to clients.
+                  Your data is protected with enterprise-grade security, CSP headers, rate limiting, and server-side API processing.
                 </CardDescription>
               </CardContent>
             </Card>
@@ -168,8 +234,16 @@ const Index = () => {
                       placeholder="Your name"
                       value={formData.name}
                       onChange={handleInputChange}
+                      className={errors.name ? "border-red-500" : ""}
+                      maxLength={100}
                       required
                     />
+                    {errors.name && (
+                      <p className="text-sm text-red-600 flex items-center gap-1">
+                        <AlertTriangle className="w-4 h-4" />
+                        {errors.name}
+                      </p>
+                    )}
                   </div>
                   
                   <div className="space-y-2">
@@ -181,8 +255,16 @@ const Index = () => {
                       placeholder="your@email.com"
                       value={formData.email}
                       onChange={handleInputChange}
+                      className={errors.email ? "border-red-500" : ""}
+                      maxLength={254}
                       required
                     />
+                    {errors.email && (
+                      <p className="text-sm text-red-600 flex items-center gap-1">
+                        <AlertTriangle className="w-4 h-4" />
+                        {errors.email}
+                      </p>
+                    )}
                   </div>
                   
                   <div className="space-y-2">
@@ -193,9 +275,20 @@ const Index = () => {
                       placeholder="Tell us how we can help you..."
                       value={formData.message}
                       onChange={handleInputChange}
+                      className={errors.message ? "border-red-500" : ""}
                       rows={4}
+                      maxLength={2000}
                       required
                     />
+                    {errors.message && (
+                      <p className="text-sm text-red-600 flex items-center gap-1">
+                        <AlertTriangle className="w-4 h-4" />
+                        {errors.message}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-500">
+                      {formData.message.length}/2000 characters
+                    </p>
                   </div>
                   
                   <Button 
