@@ -13,9 +13,8 @@ import { useAutoSave } from "@/hooks/use-auto-save";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { validateForm, getFieldValidationIssues } from "@/lib/form-validation";
 import { generateAdvancedPDF } from "@/lib/pdf-generator";
-import { showSuccess, showError, showInfo } from "@/utils/toast";
-import { useNavigate } from "react-router-dom";
-import { Save, FileText, Download, Upload, CheckCircle2, AlertTriangle, Info } from "lucide-react";
+import { showSuccess, showError } from "@/utils/toast";
+import { Save, FileText, CheckCircle2 } from "lucide-react";
 
 // Utility functions
 export const formatProcessNumber = (numero: string): string => {
@@ -43,7 +42,6 @@ export const validateProcessNumber = (numero: string): boolean => {
 };
 
 const CreateDFD = () => {
-  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     numeroProcesso: "",
     objetoAquisicao: "",
@@ -100,22 +98,26 @@ const CreateDFD = () => {
   // Keyboard shortcuts
   const shortcuts = [
     {
-      keys: ['Ctrl', 'S'],
+      key: 'Ctrl+S',
+      ctrlKey: true,
       handler: () => autoSave.forceSave(),
       description: 'Salvar formulário'
     },
     {
-      keys: ['Ctrl', 'P'],
+      key: 'Ctrl+P',
+      ctrlKey: true,
       handler: () => handleGeneratePDF(),
       description: 'Gerar PDF'
     },
     {
-      keys: ['Ctrl', 'E'],
+      key: 'Ctrl+E',
+      ctrlKey: true,
       handler: () => handleExportData(),
       description: 'Exportar dados'
     },
     {
-      keys: ['Ctrl', 'I'],
+      key: 'Ctrl+I',
+      ctrlKey: true,
       handler: () => handleImportData(),
       description: 'Importar dados'
     }
@@ -135,17 +137,17 @@ const CreateDFD = () => {
   const isSectionCompleted = (sectionId: string): boolean => {
     switch (sectionId) {
       case "basic-info":
-        return formData.numeroProcesso && formData.objetoAquisicao && formData.areaRequisitante;
+        return Boolean(formData.numeroProcesso && formData.objetoAquisicao && formData.areaRequisitante);
       case "necessidade":
-        return formData.origemNecessidade && formData.localAplicacao;
+        return Boolean(formData.origemNecessidade && formData.localAplicacao);
       case "solucao":
-        return formData.descricaoSolucao && formData.requisitosGerais;
+        return Boolean(formData.descricaoSolucao && formData.requisitosGerais);
       case "estimativa":
-        return formData.valorTotalEstimacao && formData.memoriaCalculo;
+        return Boolean(formData.valorTotalEstimacao && formData.memoriaCalculo);
       case "alternativas":
-        return formData.alternativa1.descricao || formData.alternativa2.descricao || formData.alternativa3.descricao;
+        return Boolean(formData.alternativa1.descricao || formData.alternativa2.descricao || formData.alternativa3.descricao);
       case "conclusao":
-        return formData.justificativaViabilidade && formData.beneficiosContratacao;
+        return Boolean(formData.justificativaViabilidade && formData.beneficiosContratacao);
       default:
         return false;
     }

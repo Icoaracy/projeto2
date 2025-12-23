@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Upload, Download, FileJson, AlertTriangle, CheckCircle2, Shield, Clock, Database } from "lucide-react";
+import { Upload, Download, FileJson, AlertTriangle, CheckCircle2, Shield, Database } from "lucide-react";
 import { showSuccess, showError, showInfo } from "@/utils/toast";
 
 interface DataManagerProps {
@@ -117,7 +117,7 @@ export const DataManager = ({ formData, onLoadData, onClearData, autoSave }: Dat
   const getFormDataStats = () => {
     const filledFields = Object.values(formData).filter(value => {
       if (typeof value === 'string') return value.trim() !== '';
-      if (typeof value === 'object') {
+      if (typeof value === 'object' && value !== null) {
         return Object.values(value).some(v => typeof v === 'string' && v.trim() !== '');
       }
       return false;

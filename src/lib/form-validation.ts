@@ -14,6 +14,12 @@ export interface FormField {
   customValidator?: (value: string) => string | null;
 }
 
+export interface ValidationIssue {
+  field: string;
+  message: string;
+  severity: 'error' | 'warning' | 'info';
+}
+
 export const validateField = (
   fieldName: string,
   field: FormField
@@ -173,15 +179,15 @@ export const validateForm = (formData: Record<string, any>): ValidationResult =>
   };
 };
 
-export const getFieldValidationIssues = (validationResult: ValidationResult) => {
-  const issues = [];
+export const getFieldValidationIssues = (validationResult: ValidationResult): ValidationIssue[] => {
+  const issues: ValidationIssue[] = [];
 
   validationResult.errors.forEach(error => {
     const fieldName = error.split(':')[0] || 'Campo';
     issues.push({
       field: fieldName,
       message: error.split(':').slice(1).join(':').trim(),
-      severity: 'error' as const
+      severity: 'error'
     });
   });
 
@@ -190,7 +196,7 @@ export const getFieldValidationIssues = (validationResult: ValidationResult) => 
     issues.push({
       field: fieldName,
       message: warning.split(':').slice(1).join(':').trim(),
-      severity: 'warning' as const
+      severity: 'warning'
     });
   });
 
@@ -199,7 +205,7 @@ export const getFieldValidationIssues = (validationResult: ValidationResult) => 
     issues.push({
       field: fieldName,
       message: info.split(':').slice(1).join(':').trim(),
-      severity: 'info' as const
+      severity: 'info'
     });
   });
 

@@ -64,7 +64,7 @@ class ApiClient {
       // Add CSRF token for state-changing operations
       if (options.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method)) {
         const token = await this.getCSRFToken();
-        headers['X-CSRF-Token'] = token;
+        (headers as Record<string, string>)['X-CSRF-Token'] = token;
       }
 
       const response = await fetch(url, {

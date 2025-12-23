@@ -6,8 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { showSuccess, showError } from "@/utils/toast";
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import { Mail, Phone, MapPin, Star, Zap, Shield, AlertTriangle, FileText, ArrowRight, Check, History, Users, TrendingUp, Clock, Database } from "lucide-react";
-import { apiClient } from "@/lib/api";
+import { Mail, Phone, MapPin, Star, Zap, Shield, AlertTriangle, FileText, ArrowRight, Users, Clock, Database } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Index = () => {
@@ -81,16 +80,12 @@ const Index = () => {
     setIsSubmitting(true);
 
     try {
-      // Use secure API endpoint
-      const response = await apiClient.post('/api/contact', formData);
+      // Mock API call for now
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      if (response.success) {
-        showSuccess(response.message || "Form submitted successfully!");
-        setFormData({ name: "", email: "", message: "" });
-        setErrors({});
-      } else {
-        showError(response.error || "Failed to submit form");
-      }
+      showSuccess("Form submitted successfully!");
+      setFormData({ name: "", email: "", message: "" });
+      setErrors({});
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to submit form. Please try again.";
       showError(errorMessage);

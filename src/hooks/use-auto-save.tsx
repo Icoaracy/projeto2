@@ -28,7 +28,7 @@ const encryptData = async (text: string): Promise<string> => {
     // Generate a random IV
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
 
-    // Encrypt the data
+    // Encrypt data
     const encodedText = new TextEncoder().encode(text);
     const encryptedData = await window.crypto.subtle.encrypt(
       { name: 'AES-GCM', iv },
@@ -57,7 +57,7 @@ const decryptData = async (encryptedText: string): Promise<string> => {
       return atob(encryptedText); // Simple base64 decoding as fallback
     }
 
-    // Decode the base64 string
+    // Decode base64 string
     const combined = new Uint8Array(
       atob(encryptedText).split('').map(char => char.charCodeAt(0))
     );
@@ -100,7 +100,7 @@ export const useAutoSave = <T extends Record<string, any>>(
     onSave,
     storageKey = 'dfd-form-data',
     useSessionStorage = false, // Default to localStorage for backward compatibility
-    encryptData = false // Default to no encryption for backward compatibility
+    encryptDataOption = false // Default to no encryption for backward compatibility
   } = options;
 
   const [isSaving, setIsSaving] = useState(false);
@@ -122,7 +122,7 @@ export const useAutoSave = <T extends Record<string, any>>(
       if (saved) {
         const parsedData = JSON.parse(saved);
         // Handle both encrypted and legacy unencrypted data
-        if (parsedData.encrypted && encryptData) {
+        if (parsedData.encrypted && encryptDataOption) {
           const decryptedData = await decryptData(parsedData.data);
           return {
             ...parsedData,
@@ -137,7 +137,7 @@ export const useAutoSave = <T extends Record<string, any>>(
       showError('Erro ao carregar dados salvos');
     }
     return null;
-  }, [storageKey, useSessionStorage, encryptData]);
+  }, [storageKey, useSessionStorage, encryptDataOption]);
 
   // Save data to storage
   const saveToStorage = useCallback(async (dataToSave: T) => {
@@ -146,11 +146,11 @@ export const useAutoSave = <T extends Record<string, any>>(
       const dataToStore: any = {
         data: dataToSave,
         timestamp: new Date().toISOString(),
-        encrypted: encryptData,
+        encrypted: encryptDataOption,
         storageType: useSessionStorage ? 'session' : 'local'
       };
 
-      if (encryptData) {
+      if (encryptDataOption) {
         dataToStore.data = await encryptData(JSON.stringify(dataToSave));
       }
 
@@ -169,7 +169,7 @@ export const useAutoSave = <T extends Record<string, any>>(
         showError('Erro ao salvar dados localmente');
       }
     }
-  }, [storageKey, useSessionStorage, encryptData, storageWarning]);
+  }, [storageKey, useSessionStorage, encryptDataOption, storageWarning]);
 
   // Função de salvamento
   const save = useCallback(async (dataToSave: T = data) => {
@@ -276,11 +276,10 @@ export const useAutoSave = <T extends Record<string, any>>(
     clearSavedData();
     
     // Save current data to new storage type
-    const newOptions = { ...options, useSessionStorage: newUseSessionStorage, encryptData: newEncryptData };
     await saveToStorage(data);
     
     showSuccess(`Alterado para armazenamento ${newUseSessionStorage ? 'de sessão' : 'local'}${newEncryptData ? ' com criptografia' : ''}`);
-  }, [clearSavedData, saveToStorage, data, options]);
+  }, [clearSavedData, saveToStorage, data]);
 
   return {
     isSaving,
@@ -292,6 +291,6 @@ export const useAutoSave = <T extends Record<string, any>>(
     switchStorageType,
     storageWarning,
     currentStorageType: useSessionStorage ? 'session' : 'local',
-    isEncrypted: encryptData
+    isEncrypted: encryptDataOption
   };
 };

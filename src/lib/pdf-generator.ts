@@ -189,7 +189,7 @@ export class AdvancedPDFGenerator {
     this.addNewPage();
     this.addTitle('Sumário', 1);
     
-    this.tocEntries.forEach((entry, index) => {
+    this.tocEntries.forEach((entry) => {
       const dots = '.'.repeat(50 - entry.title.length - entry.page.toString().length);
       this.addText(`${entry.title} ${dots} ${entry.page}`, 0);
     });
@@ -211,7 +211,7 @@ export class AdvancedPDFGenerator {
     this.addPageNumber();
   }
 
-  generate(content: any, formData: any): jsPDF {
+  generate(content: any, formData: any): void {
     // Sanitize all input data
     const sanitizedContent = sanitizeFormData(content);
     const sanitizedFormData = sanitizeFormData(formData);
@@ -233,8 +233,6 @@ export class AdvancedPDFGenerator {
     
     // Adicionar rodapé à última página
     this.addFooter();
-    
-    return this.pdf;
   }
 
   save(filename: string): void {
@@ -255,7 +253,7 @@ export const generateAdvancedPDF = (content: any, formData: any, options?: PDFOp
   }
   
   const generator = new AdvancedPDFGenerator(options);
-  const pdf = generator.generate(content, formData);
+  generator.generate(content, formData);
   
   const processNumber = formatProcessNumber(formData.numeroProcesso).replace(/[^a-zA-Z0-9]/g, '_');
   const filename = `DFD_${processNumber}.pdf`;

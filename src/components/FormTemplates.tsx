@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, Eye, Copy } from "lucide-react";
+import { FileText, Eye, Copy } from "lucide-react";
 import { showSuccess, showError } from "@/utils/toast";
 
 interface FormTemplate {
@@ -17,7 +17,6 @@ interface FormTemplate {
 
 interface FormTemplatesProps {
   onApplyTemplate: (template: FormTemplate) => void;
-  currentData?: any;
 }
 
 const defaultTemplates: FormTemplate[] = [
@@ -129,7 +128,7 @@ const defaultTemplates: FormTemplate[] = [
   }
 ];
 
-export const FormTemplates = ({ onApplyTemplate, currentData }: FormTemplatesProps) => {
+export const FormTemplates = ({ onApplyTemplate }: FormTemplatesProps) => {
   const [open, setOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<FormTemplate | null>(null);
   const [templates] = useState<FormTemplate[]>(defaultTemplates);
