@@ -1,6 +1,18 @@
 import jsPDF from 'jspdf';
-import { formatProcessNumber } from '@/pages/CreateDFD';
 import { sanitizeHtml } from '@/lib/security';
+
+// Local formatProcessNumber function to avoid circular dependency
+const formatProcessNumber = (numero: string): string => {
+  if (!numero || numero.length !== 17) return numero;
+  
+  const ano = numero.substring(0, 4);
+  const justica = numero.substring(4, 6);
+  const tribunal = numero.substring(6, 9);
+  const vara = numero.substring(9, 13);
+  const sequencial = numero.substring(13, 17);
+  
+  return `${ano}-${justica}.${tribunal}.${vara}.${sequencial}`;
+};
 
 export interface PDFOptions {
   includeWatermark?: boolean;
