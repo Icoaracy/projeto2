@@ -25,7 +25,7 @@ export class RateLimiter {
     return ip.replace(/[^a-fA-F0-9.:]/g, '').substring(0, 45);
   }
 
-  // Generate secure token for CSRF protection
+  // Generate secure token for CSRF protection using Node.js crypto
   static generateToken(): string {
     return crypto.randomBytes(32).toString('hex');
   }
@@ -97,7 +97,7 @@ export class RateLimiter {
   }
 }
 
-// CSRF Protection
+// CSRF Protection using Node.js crypto
 export class CSRFProtection {
   static generateToken(): string {
     return RateLimiter.generateToken();
@@ -175,9 +175,9 @@ export const validateRequestBody = (schema: any) => {
   };
 };
 
-// Add random jitter to prevent timing attacks
+// Add random jitter to prevent timing attacks using Node.js crypto
 export const addRandomJitter = (baseTime: number): number => {
-  return baseTime + Math.random() * 100;
+  return baseTime + crypto.randomInt(0, 100);
 };
 
 // Security messages

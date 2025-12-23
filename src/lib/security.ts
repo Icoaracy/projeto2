@@ -48,6 +48,34 @@ export function generateSecureRandom(length: number = 32): string {
   return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
+// Generate cryptographically secure hash using Web Crypto API
+export async function generateHash(data: string): Promise<string> {
+  if (typeof window === 'undefined' || !window.crypto || !window.crypto.subtle) {
+    // Fallback for server-side rendering or unsupported browsers
+    let hash = 0;
+    for (let i = 0; i < data.length; i++) {
+      const char = data.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(16);
+  }
+
+  const encoder = new TextEncoder();
+  const dataBuffer = encoder.encode(data);
+  const hashBuffer = await window.crypto.subtle.digest('SHA-256', dataBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Generate secure token for CSRF protection
+export async function generateCSRFToken(): Promise<string> {
+  const randomData = generateSecureRandom(32);
+  const timestamp = Date.now().toString();
+  const combined = `${randomData}-${timestamp}`;
+  return await generateHash(combined);
+}
+
 // Generic error messages to prevent information disclosure
 export const SECURITY_MESSAGES = {
   GENERIC_ERROR: 'Request failed. Please try again.',
@@ -65,4 +93,47 @@ export function preventXSS(input: string): string {
 // Check if running in browser environment
 export function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof window.document !== 'undefined';
+}
+
+// Rate limiting helper using Web Crypto API for secure token generation
+export class ClientRateLimiter {
+  private requests: Map<string, number[]> = new Map();
+  private maxRequests: number;
+  private windowMs: number;
+
+  constructor(maxRequests: number = 5, windowMs: number = 60000) {
+    this.maxRequests = maxRequests;
+    this.windowMs = windowMs;
+  }
+
+  isAllowed(identifier: string): boolean {
+    const now = Date.now();
+    const windowStart = now - this.windowMs;
+    
+    const requests = this.requests.get(identifier) || [];
+    const validRequests = requests.filter(timestamp => timestamp > windowStart);
+    
+    if (validRequests.length >= this.maxRequests) {
+      return false;
+    }
+    
+    validRequests.push(now);
+    this.requests.set(identifier, validRequests);
+    return true;
+  }
+
+  getStatus(identifier: string): { remaining: number; resetTime: number } {
+    const now = Date.now();
+    const windowStart = now - this.windowMs;
+    
+    const requests = this.requests.get(identifier) || [];
+    const validRequests = requests.filter(timestamp => timestamp > windowStart);
+    
+    const remaining = Math.max(0, this.maxRequests - validRequests.length);
+    const resetTime = validRequests.length > 0 
+      ? Math.min(...validRequests) + this.windowMs 
+      : now + this.windowMs;
+
+    return { remaining, resetTime };
+  }
 }

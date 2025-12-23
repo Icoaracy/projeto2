@@ -10,32 +10,80 @@ interface AutoSaveOptions {
   encryptData?: boolean; // New option for encryption
 }
 
-// Simple client-side encryption (for demonstration - use proper crypto in production)
-const simpleEncrypt = (text: string): string => {
+// Native Web Crypto API encryption (more secure than crypto-js)
+const encryptData = async (text: string): Promise<string> => {
   try {
-    // This is a simple XOR cipher for demonstration
-    // In production, use proper encryption libraries like crypto-js
-    const key = 'dfd-secure-key-2024';
-    let result = '';
-    for (let i = 0; i < text.length; i++) {
-      result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+    if (typeof window === 'undefined' || !window.crypto || !window.crypto.subtle) {
+      // Fallback for server-side rendering or unsupported browsers
+      return btoa(text); // Simple base64 encoding as fallback
     }
-    return btoa(result);
+
+    // Generate a random key (in production, you'd want to derive this from a password)
+    const key = await window.crypto.subtle.generateKey(
+      { name: 'AES-GCM', length: 256 },
+      true,
+      ['encrypt', 'decrypt']
+    );
+
+    // Generate a random IV
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+
+    // Encrypt the data
+    const encodedText = new TextEncoder().encode(text);
+    const encryptedData = await window.crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      encodedText
+    );
+
+    // Export the key and combine with IV and encrypted data
+    const exportedKey = await window.crypto.subtle.exportKey('raw', key);
+    const combined = new Uint8Array(exportedKey.byteLength + iv.byteLength + encryptedData.byteLength);
+    combined.set(new Uint8Array(exportedKey), 0);
+    combined.set(iv, exportedKey.byteLength);
+    combined.set(new Uint8Array(encryptedData), exportedKey.byteLength + iv.byteLength);
+
+    return btoa(String.fromCharCode(...combined));
   } catch (error) {
     console.error('Encryption error:', error);
-    return text; // Fallback to unencrypted
+    return btoa(text); // Fallback to base64
   }
 };
 
-const simpleDecrypt = (encryptedText: string): string => {
+const decryptData = async (encryptedText: string): Promise<string> => {
   try {
-    const key = 'dfd-secure-key-2024';
-    const text = atob(encryptedText);
-    let result = '';
-    for (let i = 0; i < text.length; i++) {
-      result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+    if (typeof window === 'undefined' || !window.crypto || !window.crypto.subtle) {
+      // Fallback for server-side rendering or unsupported browsers
+      return atob(encryptedText); // Simple base64 decoding as fallback
     }
-    return result;
+
+    // Decode the base64 string
+    const combined = new Uint8Array(
+      atob(encryptedText).split('').map(char => char.charCodeAt(0))
+    );
+
+    // Extract key, IV, and encrypted data
+    const keyData = combined.slice(0, 32); // 256 bits for AES-256
+    const iv = combined.slice(32, 44); // 96 bits for GCM
+    const encryptedData = combined.slice(44);
+
+    // Import the key
+    const key = await window.crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'AES-GCM' },
+      false,
+      ['decrypt']
+    );
+
+    // Decrypt the data
+    const decryptedData = await window.crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      encryptedData
+    );
+
+    return new TextDecoder().decode(decryptedData);
   } catch (error) {
     console.error('Decryption error:', error);
     return encryptedText; // Fallback to original text
@@ -67,7 +115,7 @@ export const useAutoSave = <T extends Record<string, any>>(
   const getStorage = () => useSessionStorage ? sessionStorage : localStorage;
 
   // Load saved data from storage
-  const loadSavedData = useCallback(() => {
+  const loadSavedData = useCallback(async () => {
     try {
       const storage = getStorage();
       const saved = storage.getItem(storageKey);
@@ -75,9 +123,10 @@ export const useAutoSave = <T extends Record<string, any>>(
         const parsedData = JSON.parse(saved);
         // Handle both encrypted and legacy unencrypted data
         if (parsedData.encrypted && encryptData) {
+          const decryptedData = await decryptData(parsedData.data);
           return {
             ...parsedData,
-            data: JSON.parse(simpleDecrypt(parsedData.data))
+            data: JSON.parse(decryptedData)
           };
         } else if (!parsedData.encrypted) {
           return parsedData;
@@ -91,7 +140,7 @@ export const useAutoSave = <T extends Record<string, any>>(
   }, [storageKey, useSessionStorage, encryptData]);
 
   // Save data to storage
-  const saveToStorage = useCallback((dataToSave: T) => {
+  const saveToStorage = useCallback(async (dataToSave: T) => {
     try {
       const storage = getStorage();
       const dataToStore: any = {
@@ -102,7 +151,7 @@ export const useAutoSave = <T extends Record<string, any>>(
       };
 
       if (encryptData) {
-        dataToStore.data = simpleEncrypt(JSON.stringify(dataToSave));
+        dataToStore.data = await encryptData(JSON.stringify(dataToSave));
       }
 
       storage.setItem(storageKey, JSON.stringify(dataToStore));
@@ -130,7 +179,7 @@ export const useAutoSave = <T extends Record<string, any>>(
     
     try {
       // Salvar no storage primeiro
-      saveToStorage(dataToSave);
+      await saveToStorage(dataToSave);
       
       // Se houver função de salvamento customizada
       if (onSave) {
@@ -222,13 +271,13 @@ export const useAutoSave = <T extends Record<string, any>>(
   }, [storageKey, useSessionStorage]);
 
   // Switch storage type
-  const switchStorageType = useCallback((newUseSessionStorage: boolean, newEncryptData: boolean) => {
+  const switchStorageType = useCallback(async (newUseSessionStorage: boolean, newEncryptData: boolean) => {
     // Clear current storage
     clearSavedData();
     
     // Save current data to new storage type
     const newOptions = { ...options, useSessionStorage: newUseSessionStorage, encryptData: newEncryptData };
-    saveToStorage(data);
+    await saveToStorage(data);
     
     showSuccess(`Alterado para armazenamento ${newUseSessionStorage ? 'de sessão' : 'local'}${newEncryptData ? ' com criptografia' : ''}`);
   }, [clearSavedData, saveToStorage, data, options]);
