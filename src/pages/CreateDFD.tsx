@@ -9,12 +9,16 @@ import { KeyboardShortcutsHelp } from "@/components/KeyboardShortcutsHelp";
 import { FormTemplates } from "@/components/FormTemplates";
 import { DataManager } from "@/components/DataManager";
 import { FormValidationSummary } from "@/components/FormValidationSummary";
+import { FormSection } from "@/components/FormSection";
+import { FormField } from "@/components/FormField";
+import { AlternativeSelector } from "@/components/AlternativeSelector";
 import { useAutoSave } from "@/hooks/use-auto-save";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { validateForm, getFieldValidationIssues } from "@/lib/form-validation";
 import { generateAdvancedPDF } from "@/lib/pdf-generator";
 import { showSuccess, showError } from "@/utils/toast";
-import { Save, FileText, CheckCircle2 } from "lucide-react";
+import { Save, FileText, CheckCircle2, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 // Utility functions
 export const formatProcessNumber = (numero: string): string => {
@@ -41,7 +45,15 @@ export const validateProcessNumber = (numero: string): boolean => {
   return ano >= 1900 && ano <= currentYear + 1;
 };
 
+interface Alternative {
+  id: string;
+  descricao: string;
+  pontosPositivos: string;
+  pontosNegativos: string;
+}
+
 const CreateDFD = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     numeroProcesso: "",
     objetoAquisicao: "",
@@ -72,9 +84,11 @@ const CreateDFD = () => {
     impactosAmbientais: "",
     justificativaViabilidade: "",
     equipePlanejamento: "",
-    alternativa1: { descricao: "", pontosPositivos: "", pontosNegativos: "" },
-    alternativa2: { descricao: "", pontosPositivos: "", pontosNegativos: "" },
-    alternativa3: { descricao: "", pontosPositivos: "", pontosNegativos: "" }
+    alternativas: [
+      { id: "1", descricao: "", pontosPositivos: "", pontosNegativos: "" },
+      { id: "2", descricao: "", pontosPositivos: "", pontosNegativos: "" },
+      { id: "3", descricao: "", pontosPositivos: "", pontosNegativos: "" }
+    ] as Alternative[]
   });
 
   const [currentSection, setCurrentSection] = useState("basic-info");
@@ -145,7 +159,7 @@ const CreateDFD = () => {
       case "estimativa":
         return Boolean(formData.valorTotalEstimacao && formData.memoriaCalculo);
       case "alternativas":
-        return Boolean(formData.alternativa1.descricao || formData.alternativa2.descricao || formData.alternativa3.descricao);
+        return formData.alternativas.some(alt => alt.descricao.trim().length > 0);
       case "conclusao":
         return Boolean(formData.justificativaViabilidade && formData.beneficiosContratacao);
       default:
@@ -157,6 +171,13 @@ const CreateDFD = () => {
     setFormData(prev => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  const handleAlternativesChange = (alternatives: Alternative[]) => {
+    setFormData(prev => ({
+      ...prev,
+      alternativas
     }));
   };
 
@@ -261,9 +282,11 @@ const CreateDFD = () => {
       impactosAmbientais: "",
       justificativaViabilidade: "",
       equipePlanejamento: "",
-      alternativa1: { descricao: "", pontosPositivos: "", pontosNegativos: "" },
-      alternativa2: { descricao: "", pontosPositivos: "", pontosNegativos: "" },
-      alternativa3: { descricao: "", pontosPositivos: "", pontosNegativos: "" }
+      alternativas: [
+        { id: "1", descricao: "", pontosPositivos: "", pontosNegativos: "" },
+        { id: "2", descricao: "", pontosPositivos: "", pontosNegativos: "" },
+        { id: "3", descricao: "", pontosPositivos: "", pontosNegativos: "" }
+      ] as Alternative[]
     });
   };
 
@@ -287,8 +310,19 @@ const CreateDFD = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-7xl mx-auto">
+        {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Criar Diagrama de Fluxo de Dados</h1>
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/")}
+              className="flex items-center gap-2"
+            >
+              <ArrowRight className="w-4 h-4 rotate-180" />
+              Voltar
+            </Button>
+            <h1 className="text-3xl font-bold">Criar Diagrama de Fluxo de Dados</h1>
+          </div>
           <div className="flex gap-2">
             <KeyboardShortcutsHelp shortcuts={shortcuts} />
             <FormTemplates onApplyTemplate={handleApplyTemplate} />
@@ -302,6 +336,7 @@ const CreateDFD = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Progress Sidebar */}
           <div className="lg:col-span-1">
             <FormProgress 
               sections={sections} 
@@ -310,46 +345,72 @@ const CreateDFD = () => {
             />
           </div>
 
-          <div className="lg:col-span-3">
+          {/* Main Content */}
+          <div className="lg:col-span-3 space-y-6">
+            {/* Basic Information Section */}
+            <FormSection
+              id="basic-info"
+              title="Informações Básicas"
+              description="Preencha os dados essenciais do processo"
+              isCompleted={isSectionCompleted("basic-info")}
+            >
+              <div className="grid gap-4">
+                <FormField
+                  id="numeroProcesso"
+                  label="Número do Processo"
+                  value={formData.numeroProcesso}
+                  onChange={(value) => handleInputChange('numeroProcesso', value)}
+                  placeholder="00000000000000000"
+                  maxLength={17}
+                  required
+                  description="Formato: 17 dígitos numéricos"
+                  error={formData.numeroProcesso && !validateProcessNumber(formData.numeroProcesso) ? "Número de processo inválido" : undefined}
+                />
+
+                <FormField
+                  id="objetoAquisicao"
+                  label="Objeto da Aquisição"
+                  value={formData.objetoAquisicao}
+                  onChange={(value) => handleInputChange('objetoAquisicao', value)}
+                  type="textarea"
+                  placeholder="Descreva o objeto da aquisição"
+                  required
+                  showCharacterCount
+                  maxLength={2000}
+                  showTextImprovement
+                  context="objeto de licitação"
+                />
+
+                <FormField
+                  id="areaRequisitante"
+                  label="Área Requisitante"
+                  value={formData.areaRequisitante}
+                  onChange={(value) => handleInputChange('areaRequisitante', value)}
+                  placeholder="Nome da área requisitante"
+                  required
+                  maxLength={100}
+                />
+              </div>
+            </FormSection>
+
+            {/* Alternatives Section */}
+            <FormSection
+              id="alternativas"
+              title="Alternativas de Solução"
+              description="Analise e compare diferentes alternativas para a contratação"
+              isCompleted={isSectionCompleted("alternativas")}
+            >
+              <AlternativeSelector
+                alternatives={formData.alternativas}
+                onChange={handleAlternativesChange}
+                maxAlternatives={3}
+              />
+            </FormSection>
+
+            {/* Action Buttons */}
             <Card>
-              <CardHeader>
-                <CardTitle>Informações Básicas</CardTitle>
-                <CardDescription>Preencha os dados essenciais do processo</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="numeroProcesso">Número do Processo</Label>
-                  <Input
-                    id="numeroProcesso"
-                    value={formData.numeroProcesso}
-                    onChange={(e) => handleInputChange('numeroProcesso', e.target.value)}
-                    placeholder="00000000000000000"
-                    maxLength={17}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="objetoAquisicao">Objeto da Aquisição</Label>
-                  <Textarea
-                    id="objetoAquisicao"
-                    value={formData.objetoAquisicao}
-                    onChange={(e) => handleInputChange('objetoAquisicao', e.target.value)}
-                    placeholder="Descreva o objeto da aquisição"
-                    rows={3}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="areaRequisitante">Área Requisitante</Label>
-                  <Input
-                    id="areaRequisitante"
-                    value={formData.areaRequisitante}
-                    onChange={(e) => handleInputChange('areaRequisitante', e.target.value)}
-                    placeholder="Nome da área requisitante"
-                  />
-                </div>
-
-                <div className="flex gap-2">
+              <CardContent className="pt-6">
+                <div className="flex flex-wrap gap-2">
                   <Button onClick={handleValidateForm}>
                     <CheckCircle2 className="w-4 h-4 mr-2" />
                     Validar Formulário
@@ -365,10 +426,18 @@ const CreateDFD = () => {
                 </div>
 
                 {validationIssues.length > 0 && (
-                  <FormValidationSummary 
-                    issues={validationIssues}
-                    onFieldClick={(fieldId) => console.log('Navigate to field:', fieldId)}
-                  />
+                  <div className="mt-4">
+                    <FormValidationSummary 
+                      issues={validationIssues}
+                      onFieldClick={(fieldId) => {
+                        const element = document.getElementById(fieldId);
+                        if (element) {
+                          element.scrollIntoView({ behavior: 'smooth' });
+                          element.focus();
+                        }
+                      }}
+                    />
+                  </div>
                 )}
               </CardContent>
             </Card>
