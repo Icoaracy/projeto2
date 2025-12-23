@@ -3,7 +3,7 @@ import { useEffect, useCallback } from 'react';
 type ShortcutHandler = () => void;
 
 interface KeyboardShortcut {
-  key: string;
+  keys: string[];
   ctrlKey?: boolean;
   shiftKey?: boolean;
   altKey?: boolean;
@@ -14,7 +14,7 @@ interface KeyboardShortcut {
 export const useKeyboardShortcuts = (shortcuts: KeyboardShortcut[]) => {
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     const matchingShortcut = shortcuts.find(shortcut => {
-      const keyMatch = shortcut.key.toLowerCase() === event.key.toLowerCase();
+      const keyMatch = shortcut.keys.some(key => key.toLowerCase() === event.key.toLowerCase());
       const ctrlMatch = shortcut.ctrlKey ? event.ctrlKey || event.metaKey : !event.ctrlKey && !event.metaKey;
       const shiftMatch = shortcut.shiftKey ? event.shiftKey : !event.shiftKey;
       const altMatch = shortcut.altKey ? event.altKey : !event.altKey;

@@ -242,7 +242,7 @@ export class AdvancedPDFGenerator {
   }
 }
 
-export const generateAdvancedPDF = (content: any, formData: any, options?: PDFOptions) => {
+export const generateAdvancedPDF = (content: any, formData: any, options?: PDFOptions): string => {
   // Validate inputs before processing
   if (!content || typeof content !== 'object') {
     throw new Error('Invalid content provided for PDF generation');
