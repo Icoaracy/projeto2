@@ -98,25 +98,25 @@ const CreateDFD = () => {
   // Keyboard shortcuts
   const shortcuts = [
     {
-      key: 'Ctrl+S',
+      keys: ['Ctrl', 'S'],
       ctrlKey: true,
       handler: () => autoSave.forceSave(),
       description: 'Salvar formulário'
     },
     {
-      key: 'Ctrl+P',
+      keys: ['Ctrl', 'P'],
       ctrlKey: true,
       handler: () => handleGeneratePDF(),
       description: 'Gerar PDF'
     },
     {
-      key: 'Ctrl+E',
+      keys: ['Ctrl', 'E'],
       ctrlKey: true,
       handler: () => handleExportData(),
       description: 'Exportar dados'
     },
     {
-      key: 'Ctrl+I',
+      keys: ['Ctrl', 'I'],
       ctrlKey: true,
       handler: () => handleImportData(),
       description: 'Importar dados'
@@ -157,16 +157,6 @@ const CreateDFD = () => {
     setFormData(prev => ({
       ...prev,
       [field]: value
-    }));
-  };
-
-  const handleAlternativaChange = (alternativa: number, field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [`alternativa${alternativa}`]: {
-        ...prev[`alternativa${alternativa}` as keyof typeof prev],
-        [field]: value
-      }
     }));
   };
 

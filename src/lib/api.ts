@@ -37,11 +37,11 @@ class ApiClient {
       }
 
       const data = await response.json();
-      this.csrfToken = data.token;
+      this.csrfToken = data.token || '';
       return this.csrfToken;
     } catch (error) {
       console.error('CSRF token error:', error);
-      throw new Error('Request failed. Please refresh the page.');
+      throw new Error('Request failed. Please refresh page.');
     }
   }
 
@@ -53,18 +53,18 @@ class ApiClient {
       const url = `${this.baseUrl}${endpoint}`;
       
       // Add comprehensive security headers
-      const headers: HeadersInit = {
+      const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache',
-        ...options.headers,
+        ...(options.headers as Record<string, string>)
       };
 
       // Add CSRF token for state-changing operations
       if (options.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method)) {
         const token = await this.getCSRFToken();
-        (headers as Record<string, string>)['X-CSRF-Token'] = token;
+        headers['X-CSRF-Token'] = token;
       }
 
       const response = await fetch(url, {
@@ -92,7 +92,7 @@ class ApiClient {
         if (response.status === 429) {
           errorMessage = 'Too many requests. Please try again later.';
         } else if (response.status === 403) {
-          errorMessage = 'Invalid request. Please refresh the page.';
+          errorMessage = 'Invalid request. Please refresh page.';
         } else if (response.status === 400) {
           errorMessage = 'Invalid input provided.';
         } else if (response.status >= 500) {

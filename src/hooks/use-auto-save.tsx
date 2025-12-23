@@ -100,7 +100,7 @@ export const useAutoSave = <T extends Record<string, any>>(
     onSave,
     storageKey = 'dfd-form-data',
     useSessionStorage = false, // Default to localStorage for backward compatibility
-    encryptDataOption = false // Default to no encryption for backward compatibility
+    encryptData = false // Default to no encryption for backward compatibility
   } = options;
 
   const [isSaving, setIsSaving] = useState(false);
@@ -122,7 +122,7 @@ export const useAutoSave = <T extends Record<string, any>>(
       if (saved) {
         const parsedData = JSON.parse(saved);
         // Handle both encrypted and legacy unencrypted data
-        if (parsedData.encrypted && encryptDataOption) {
+        if (parsedData.encrypted && encryptData) {
           const decryptedData = await decryptData(parsedData.data);
           return {
             ...parsedData,
@@ -137,7 +137,7 @@ export const useAutoSave = <T extends Record<string, any>>(
       showError('Erro ao carregar dados salvos');
     }
     return null;
-  }, [storageKey, useSessionStorage, encryptDataOption]);
+  }, [storageKey, useSessionStorage, encryptData]);
 
   // Save data to storage
   const saveToStorage = useCallback(async (dataToSave: T) => {
@@ -146,11 +146,11 @@ export const useAutoSave = <T extends Record<string, any>>(
       const dataToStore: any = {
         data: dataToSave,
         timestamp: new Date().toISOString(),
-        encrypted: encryptDataOption,
+        encrypted: encryptData,
         storageType: useSessionStorage ? 'session' : 'local'
       };
 
-      if (encryptDataOption) {
+      if (encryptData) {
         dataToStore.data = await encryptData(JSON.stringify(dataToSave));
       }
 
@@ -169,7 +169,7 @@ export const useAutoSave = <T extends Record<string, any>>(
         showError('Erro ao salvar dados localmente');
       }
     }
-  }, [storageKey, useSessionStorage, encryptDataOption, storageWarning]);
+  }, [storageKey, useSessionStorage, encryptData, storageWarning]);
 
   // Função de salvamento
   const save = useCallback(async (dataToSave: T = data) => {
@@ -291,6 +291,6 @@ export const useAutoSave = <T extends Record<string, any>>(
     switchStorageType,
     storageWarning,
     currentStorageType: useSessionStorage ? 'session' : 'local',
-    isEncrypted: encryptDataOption
+    isEncrypted: encryptData
   };
 };
