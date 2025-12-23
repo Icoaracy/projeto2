@@ -113,14 +113,16 @@ export class AdvancedPDFGenerator {
   }
 
   private addWatermark(): void {
-    // Use jsPDF's built-in methods instead of GState
-    this.pdf.setGState(new (this.pdf as any).GState({ opacity: 0.1 }));
-    this.pdf.setFontSize(50);
+    // Use simpler watermark approach to avoid GState issues
     this.pdf.setTextColor(200, 200, 200);
-    this.pdf.text('DFD', 105, 150, { align: 'center', angle: 45 });
-    this.pdf.setGState(new (this.pdf as any).GState({ opacity: 1 }));
-    this.pdf.setFontSize(this.options.fontSize);
+    this.pdf.setFontSize(50);
+    this.pdf.text('DFD', 105, 150, { 
+      align: 'center',
+      angle: 45,
+      baseline: 'middle'
+    });
     this.pdf.setTextColor(0, 0, 0);
+    this.pdf.setFontSize(this.options.fontSize);
   }
 
   private addPageNumber(): void {
