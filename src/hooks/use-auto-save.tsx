@@ -11,7 +11,7 @@ interface AutoSaveOptions {
 }
 
 // Native Web Crypto API encryption (more secure than crypto-js)
-const encryptData = async (text: string): Promise<string> => {
+const encryptDataFunc = async (text: string): Promise<string> => {
   try {
     if (typeof window === 'undefined' || !window.crypto || !window.crypto.subtle) {
       // Fallback for server-side rendering or unsupported browsers
@@ -50,7 +50,7 @@ const encryptData = async (text: string): Promise<string> => {
   }
 };
 
-const decryptData = async (encryptedText: string): Promise<string> => {
+const decryptDataFunc = async (encryptedText: string): Promise<string> => {
   try {
     if (typeof window === 'undefined' || !window.crypto || !window.crypto.subtle) {
       // Fallback for server-side rendering or unsupported browsers
@@ -123,7 +123,7 @@ export const useAutoSave = <T extends Record<string, any>>(
         const parsedData = JSON.parse(saved);
         // Handle both encrypted and legacy unencrypted data
         if (parsedData.encrypted && encryptData) {
-          const decryptedData = await decryptData(parsedData.data);
+          const decryptedData = await decryptDataFunc(parsedData.data);
           return {
             ...parsedData,
             data: JSON.parse(decryptedData)
@@ -151,7 +151,7 @@ export const useAutoSave = <T extends Record<string, any>>(
       };
 
       if (encryptData) {
-        dataToStore.data = await encryptData(JSON.stringify(dataToSave));
+        dataToStore.data = await encryptDataFunc(JSON.stringify(dataToSave));
       }
 
       storage.setItem(storageKey, JSON.stringify(dataToStore));
